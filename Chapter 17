@@ -1,0 +1,178 @@
+// Chapter 17 — Defining and implementing traits
+
+trait Shape {
+    fn area(&self)      -> f64;
+    fn perimeter(&self) -> f64;
+    fn name(&self)      -> &'static str;
+}
+
+trait Describable {
+    fn describe(&self) -> String;
+}
+
+#[derive(Debug)] struct Circle    { radius: f64 }
+#[derive(Debug)] struct Rectangle { width: f64, height: f64 }
+#[derive(Debug)] struct Triangle  { a: f64, b: f64, c: f64 }
+
+impl Shape for Circle {
+    fn area(&self)      -> f64 { std::f64::consts::PI * self.radius * self.radius }
+    fn perimeter(&self) -> f64 { 2.0 * std::f64::consts::PI * self.radius }
+    fn name(&self)      -> &'static str { "Circle" }
+}
+impl Shape for Rectangle {
+    fn area(&self)      -> f64 { self.width * self.height }
+    fn perimeter(&self) -> f64 { 2.0 * (self.width + self.height) }
+    fn name(&self)      -> &'static str { "Rectangle" }
+}
+impl Shape for Triangle {
+    fn area(&self) -> f64 { let s=(self.a+self.b+self.c)/2.0; (s*(s-self.a)*(s-self.b)*(s-self.c)).sqrt() }
+    fn perimeter(&self) -> f64 { self.a+self.b+self.c }
+    fn name(&self)  -> &'static str { "Triangle" }
+}
+impl Describable for Circle    { fn describe(&self) -> String { format!("Circle r={:.2}", self.radius) } }
+impl Describable for Rectangle { fn describe(&self) -> String { format!("Rect {}x{}", self.width, self.height) } }
+
+fn print_shape_info<T: Shape + Describable>(shape: &T) {
+    println!("--- {} ---", shape.name());
+    println!("  {}", shape.describe());
+    println!("  Area:      {:.4}", shape.area());
+    println!("  Perimeter: {:.4}", shape.perimeter());
+}
+
+fn total_area(shapes: &[Box<dyn Shape>]) -> f64 {
+    shapes.iter().map(|s| s.area()).sum()
+}
+
+fn main() {
+    let c = Circle { radius: 5.0 };
+    let r = Rectangle { width: 4.0, height: 6.0 };
+    print_shape_info(&c);
+    print_shape_info(&r);
+
+    let scene: Vec<Box<dyn Shape>> = vec![
+        Box::new(Circle { radius: 3.0 }),
+        Box::new(Rectangle { width: 5.0, height: 2.0 }),
+        Box::new(Triangle { a: 3.0, b: 4.0, c: 5.0 }),
+    ];
+    println!("Total area: {:.4}", total_area(&scene));
+}
+
+// Chapter 17 — Default method implementations and supertraits
+
+use std::fmt;
+
+trait Summary {
+    fn author(&self)   -> &str;
+    fn headline(&self) -> String;
+    fn preview(&self) -> String {
+        format!("By {}. {}", self.author(), self.headline())
+    }
+    fn print_summary(&self) {
+        println!("SUMMARY: {}", self.preview());
+        println!("AUTHOR:  {}", self.author());
+    }
+}
+
+struct NewsArticle { author: String, title: String, content: String }
+struct Tweet { username: String, content: String }
+
+impl Summary for NewsArticle {
+    fn author(&self)   -> &str { &self.author }
+    fn headline(&self) -> String {
+        format!("{}: {}", self.title, &self.content[..self.content.len().min(40)])
+    }
+}
+impl Summary for Tweet {
+    fn author(&self)   -> &str { &self.username }
+    fn headline(&self) -> String { format!("@{}: {}", self.username, self.content) }
+    fn preview(&self)  -> String { format!("Tweet by @{}: {}", self.username, self.content) }
+}
+
+// Supertraits
+trait Printable: fmt::Display {
+    fn print(&self) { println!("{self}"); }
+    fn print_with_border(&self) {
+        let s = self.to_string();
+        let border = "-".repeat(s.len() + 4);
+        println!("{border}"); println!("| {s} |"); println!("{border}");
+    }
+}
+struct Celsius(f64);
+impl fmt::Display for Celsius { fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "{:.1} C", self.0) } }
+impl Printable for Celsius {}
+
+fn main() {
+    let article = NewsArticle { author: String::from("A. Ghanaoui"), title: String::from("Rust 2025"), content: String::from("The Rust programming language announced...") };
+    let tweet   = Tweet { username: String::from("rustlang"), content: String::from("Rust is safe and fast!") };
+    article.print_summary();
+    println!();
+    tweet.print_summary();
+
+    let temp = Celsius(22.5);
+    temp.print();
+    temp.print_with_border();
+}
+
+// Chapter 17 — Operator overloading
+
+use std::ops::{Add, Sub, Mul, Neg};
+use std::fmt;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Vec2 { x: f64, y: f64 }
+
+impl Vec2 {
+    fn new(x: f64, y: f64) -> Vec2 { Vec2 { x, y } }
+    fn length(&self) -> f64 { (self.x*self.x + self.y*self.y).sqrt() }
+    fn dot(&self, other: &Vec2) -> f64 { self.x*other.x + self.y*other.y }
+}
+
+impl Add for Vec2 { type Output=Vec2; fn add(self, r: Vec2)->Vec2 { Vec2::new(self.x+r.x, self.y+r.y) } }
+impl Sub for Vec2 { type Output=Vec2; fn sub(self, r: Vec2)->Vec2 { Vec2::new(self.x-r.x, self.y-r.y) } }
+impl Mul<f64> for Vec2 { type Output=Vec2; fn mul(self, s:f64)->Vec2 { Vec2::new(self.x*s, self.y*s) } }
+impl Neg for Vec2 { type Output=Vec2; fn neg(self)->Vec2 { Vec2::new(-self.x, -self.y) } }
+impl fmt::Display for Vec2 { fn fmt(&self, f:&mut fmt::Formatter)->fmt::Result { write!(f, "({:.2},{:.2})", self.x, self.y) } }
+
+fn main() {
+    let a = Vec2::new(3.0, 4.0);
+    let b = Vec2::new(1.0, 2.0);
+    println!("a + b = {}",    a + b);
+    println!("a - b = {}",    a - b);
+    println!("a * 2 = {}",    a * 2.0);
+    println!("-a    = {}",    -a);
+    println!("|a|   = {:.4}", a.length());
+    println!("a.b   = {:.4}", a.dot(&b));
+}
+
+// Chapter 17 — Writing a custom iterator
+
+struct Fibonacci { current: u64, next: u64, max: u64 }
+
+impl Fibonacci {
+    fn new(max: u64) -> Fibonacci { Fibonacci { current:0, next:1, max } }
+}
+
+impl Iterator for Fibonacci {
+    type Item = u64;
+    fn next(&mut self) -> Option<u64> {
+        if self.current > self.max { return None; }
+        let result  = self.current;
+        let new_next = self.current + self.next;
+        self.current = self.next;
+        self.next    = new_next;
+        Some(result)
+    }
+}
+
+fn main() {
+    let fibs: Vec<u64> = Fibonacci::new(100).collect();
+    println!("Fibonacci up to 100: {:?}", fibs);
+
+    let sum_of_evens: u64 = Fibonacci::new(1000)
+        .filter(|&n| n % 2 == 0)
+        .sum();
+    println!("Sum of even Fibonaccis up to 1000: {sum_of_evens}");
+
+    let count = Fibonacci::new(100).count();
+    println!("Count: {count}");
+}
