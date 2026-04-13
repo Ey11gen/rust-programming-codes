@@ -1,0 +1,124 @@
+// Chapter 18 — Type aliases
+
+use std::collections::HashMap;
+
+type IoResult<T>     = Result<T, std::io::Error>;
+type Matrix2x2       = [[f64; 2]; 2];
+type NameScoreMap    = HashMap<String, Vec<f64>>;
+type Transformer     = fn(f64) -> f64;
+
+fn identity_matrix() -> Matrix2x2 { [[1.0, 0.0], [0.0, 1.0]] }
+
+fn print_matrix(m: &Matrix2x2) {
+    for row in m { for val in row { print!("{val:6.2}"); } println!(); }
+}
+
+fn apply(value: f64, transform: Transformer) -> f64 { transform(value) }
+
+fn write_bytes(data: &[u8]) -> IoResult<usize> { Ok(data.len()) }
+
+fn main() {
+    let result: IoResult<usize> = write_bytes(&[1, 2, 3]);
+    println!("{:?}", result);
+
+    let id = identity_matrix();
+    print_matrix(&id);
+
+    let doubled = apply(5.0, |x| x * 2.0);
+    println!("Doubled: {doubled}");
+}
+
+// Chapter 18 — Newtype pattern
+
+use std::fmt;
+use std::ops::{Add, Deref};
+
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+struct Meters(f64);
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+struct Kilograms(f64);
+#[derive(Debug, Clone, Copy)]
+struct Seconds(f64);
+
+impl fmt::Display for Meters    { fn fmt(&self, f:&mut fmt::Formatter)->fmt::Result { write!(f,"{:.2} m",  self.0) } }
+impl fmt::Display for Kilograms { fn fmt(&self, f:&mut fmt::Formatter)->fmt::Result { write!(f,"{:.2} kg", self.0) } }
+impl fmt::Display for Seconds   { fn fmt(&self, f:&mut fmt::Formatter)->fmt::Result { write!(f,"{:.2} s",  self.0) } }
+impl Add for Meters { type Output=Meters; fn add(self, r:Meters)->Meters { Meters(self.0+r.0) } }
+
+fn kinetic_energy(mass: Kilograms, speed: f64) -> f64 { 0.5 * mass.0 * speed * speed }
+fn travel_time(distance: Meters, speed: f64) -> Seconds { Seconds(distance.0 / speed) }
+
+// Newtype with Deref
+struct SortedVec(Vec<i32>);
+impl SortedVec {
+    fn new(mut d: Vec<i32>) -> Self { d.sort(); SortedVec(d) }
+    fn into_inner(self) -> Vec<i32> { self.0 }
+}
+impl Deref for SortedVec { type Target=Vec<i32>; fn deref(&self)->&Vec<i32> { &self.0 } }
+
+fn main() {
+    println!("Total: {}", Meters(100.0) + Meters(50.0));
+    println!("KE:    {:.2} J", kinetic_energy(Kilograms(70.0), 10.0));
+    println!("Time:  {}", travel_time(Meters(200.0), 5.0));
+
+    let sv = SortedVec::new(vec![5, 2, 8, 1, 9, 3]);
+    println!("Sorted:  {:?}", *sv);
+    println!("First:   {:?}", sv.first());
+    println!("Length:  {}", sv.len());
+}
+
+// Chapter 18 — From, Into, TryFrom, TryInto
+
+use std::fmt;
+use std::convert::TryFrom;
+
+#[derive(Debug)] struct Celsius(f64);
+#[derive(Debug)] struct Fahrenheit(f64);
+#[derive(Debug)] struct Kelvin(f64);
+
+impl fmt::Display for Celsius    { fn fmt(&self, f:&mut fmt::Formatter)->fmt::Result { write!(f,"{:.2} C", self.0) } }
+impl fmt::Display for Fahrenheit { fn fmt(&self, f:&mut fmt::Formatter)->fmt::Result { write!(f,"{:.2} F", self.0) } }
+impl fmt::Display for Kelvin     { fn fmt(&self, f:&mut fmt::Formatter)->fmt::Result { write!(f,"{:.2} K", self.0) } }
+
+impl From<Celsius> for Fahrenheit { fn from(c: Celsius) -> Self { Fahrenheit(c.0 * 9.0/5.0 + 32.0) } }
+impl From<Celsius> for Kelvin     { fn from(c: Celsius) -> Self { Kelvin(c.0 + 273.15) } }
+impl From<Fahrenheit> for Celsius { fn from(f: Fahrenheit) -> Self { Celsius((f.0 - 32.0)*5.0/9.0) } }
+
+// TryFrom example
+#[derive(Debug)]
+struct PositiveInt(u32);
+#[derive(Debug)]
+struct ConvErr(String);
+impl fmt::Display for ConvErr { fn fmt(&self, f:&mut fmt::Formatter)->fmt::Result { write!(f,"{}",self.0) } }
+
+impl TryFrom<i64> for PositiveInt {
+    type Error = ConvErr;
+    fn try_from(v: i64) -> Result<Self, Self::Error> {
+        if v <= 0         { return Err(ConvErr(format!("{v} is not positive"))); }
+        if v > u32::MAX as i64 { return Err(ConvErr(format!("{v} exceeds u32::MAX"))); }
+        Ok(PositiveInt(v as u32))
+    }
+}
+
+fn print_in_celsius<T: Into<Celsius>>(temp: T) {
+    let c: Celsius = temp.into();
+    println!("In Celsius: {c}");
+}
+
+fn main() {
+    let boiling = Celsius(100.0);
+    println!("100 C = {} = {}", Fahrenheit::from(Celsius(100.0)), Kelvin::from(Celsius(100.0)));
+
+    let f: Fahrenheit = Celsius(0.0).into();
+    println!("0 C = {f}");
+
+    print_in_celsius(Celsius(22.0));
+    print_in_celsius(Fahrenheit(72.0));
+
+    for v in [42_i64, -3, 0, 5_000_000_000] {
+        match PositiveInt::try_from(v) {
+            Ok(pi)  => println!("{v} -> PositiveInt({})", pi.0),
+            Err(e)  => println!("{v} -> Error: {e}"),
+        }
+    }
+}
