@@ -1,0 +1,146 @@
+// Chapter 6 — Ownership rules and variable scope
+
+fn main() {
+    // s1 comes into scope
+    let s1 = String::from("hello");
+    println!("{s1}");
+
+    {
+        // s2 comes into scope here
+        let s2 = String::from("world");
+        println!("{s2}");
+    }
+    // s2 dropped here; its heap memory is freed
+
+    println!("{s1}");  // s1 is still valid
+}  // s1 dropped here
+
+// Chapter 6 — Move semantics
+
+fn takes_string(s: String) {
+    println!("{s}");
+    // s goes out of scope here; memory freed
+}
+
+fn gives_string() -> String {
+    let new_string = String::from("from inside the function");
+    new_string  // ownership moved to caller
+}
+
+fn main() {
+    // Integers: Copy type — original remains valid
+    let x = 42;
+    let y = x;
+    println!("x={x}, y={y}");
+
+    // String: moves on assignment
+    let s1 = String::from("hello");
+    let s2 = s1;  // s1 is moved; s1 no longer valid
+    println!("{s2}");
+
+    // Moving into a function
+    let s3 = String::from("hello");
+    takes_string(s3);
+    // s3 is no longer accessible
+
+    // Getting ownership back via return value
+    let s4 = gives_string();
+    println!("{s4}");
+}
+
+// Chapter 6 — The Clone trait
+
+#[derive(Clone, Debug)]
+struct Point { x: f64, y: f64 }
+
+#[derive(Clone, Debug)]
+struct Circle { center: Point, radius: f64, label: String }
+
+fn main() {
+    let s1 = String::from("hello");
+    let s2 = s1.clone();  // deep copy
+    println!("s1={s1}, s2={s2}");
+
+    let original = Circle {
+        center: Point { x: 0.0, y: 0.0 },
+        radius: 5.0,
+        label: String::from("circle A"),
+    };
+    let mut copy = original.clone();
+    copy.label  = String::from("circle B");
+    copy.radius = 10.0;
+    println!("original: {} r={}", original.label, original.radius);
+    println!("copy:     {} r={}", copy.label,     copy.radius);
+}
+
+// Chapter 6 — The Copy trait
+
+#[derive(Copy, Clone, Debug)]
+struct Vector2D { x: f64, y: f64 }
+
+fn scale(v: Vector2D, factor: f64) -> Vector2D {
+    Vector2D { x: v.x * factor, y: v.y * factor }
+}
+
+fn print_integer(x: i32) {
+    println!("Integer: {x}");
+}
+
+fn main() {
+    // i32 is Copy
+    let n = 42;
+    print_integer(n);
+    println!("n is still: {n}");
+
+    // Custom Copy type
+    let v1 = Vector2D { x: 1.0, y: 2.0 };
+    let v2 = scale(v1, 3.0);  // v1 copied, not moved
+    println!("v1: {:?}", v1);  // still valid
+    println!("v2: {:?}", v2);
+}
+
+// Chapter 6 — Drop trait and RAII
+
+struct Connection { address: String }
+
+impl Drop for Connection {
+    fn drop(&mut self) {
+        println!("Closing connection to {}", self.address);
+    }
+}
+
+fn process_data() {
+    let conn = Connection { address: String::from("192.168.1.1:8080") };
+    println!("Connected to {}", conn.address);
+    // Drop called automatically here
+}
+
+fn main() {
+    process_data();
+    println!("process_data completed");
+
+    let early = Connection { address: String::from("mysql://localhost/test") };
+    println!("Using early connection...");
+    std::mem::drop(early);  // explicit early drop
+    println!("Connection was dropped early");
+}
+
+// Chapter 6 — Exercise: Ownership Tracing
+
+fn process(mut s: String) -> String {
+    s.push_str(" (processed)");
+    s
+}
+
+fn main() {
+    let original = String::from("hello");
+    let processed = process(original);
+    println!("{processed}");
+
+    // Clone before passing to keep original
+    let data = String::from("important data");
+    let data_clone = data.clone();
+    let result = process(data_clone);
+    println!("original: {data}");
+    println!("result:   {result}");
+}
