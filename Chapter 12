@@ -1,0 +1,210 @@
+// Chapter 12 — Defining enums and using match
+
+#[derive(Debug, PartialEq)]
+enum Direction { North, South, East, West }
+
+impl Direction {
+    fn opposite(&self) -> Direction {
+        match self {
+            Direction::North => Direction::South,
+            Direction::South => Direction::North,
+            Direction::East  => Direction::West,
+            Direction::West  => Direction::East,
+        }
+    }
+    fn is_horizontal(&self) -> bool {
+        matches!(self, Direction::East | Direction::West)
+    }
+}
+
+fn classify_score(score: u32) -> &'static str {
+    match score {
+        90..=100 => "Excellent",
+        80..=89  => "Good",
+        70..=79  => "Satisfactory",
+        60..=69  => "Passing",
+        0..=59   => "Failing",
+        _        => "Invalid score",
+    }
+}
+
+fn main() {
+    let d = Direction::North;
+    println!("{:?} -> {:?}", d, d.opposite());
+    println!("East is horizontal: {}", Direction::East.is_horizontal());
+    println!("North is horizontal: {}", Direction::North.is_horizontal());
+
+    for score in [100, 85, 72, 65, 50, 120] {
+        println!("{score}: {}", classify_score(score));
+    }
+}
+
+// Chapter 12 — Enums carrying data
+
+#[derive(Debug)]
+enum NetworkEvent {
+    ConnectionEstablished,
+    DataReceived(String, u16),
+    Disconnected(String),
+    Error { code: u32, message: String },
+}
+
+fn handle_event(event: &NetworkEvent) {
+    match event {
+        NetworkEvent::ConnectionEstablished        => println!("Connection established."),
+        NetworkEvent::DataReceived(addr, port)    => println!("Data from {addr}:{port}"),
+        NetworkEvent::Disconnected(reason)        => println!("Disconnected: {reason}"),
+        NetworkEvent::Error { code, message }     => println!("Error {code}: {message}"),
+    }
+}
+
+fn main() {
+    let events = vec![
+        NetworkEvent::ConnectionEstablished,
+        NetworkEvent::DataReceived(String::from("192.168.1.1"), 8080),
+        NetworkEvent::Disconnected(String::from("timeout")),
+        NetworkEvent::Error { code: 503, message: String::from("Service unavailable") },
+    ];
+    for event in &events { handle_event(event); }
+}
+
+// Chapter 12 — Option<T> and Result<T,E>
+
+fn divide(numerator: f64, denominator: f64) -> Option<f64> {
+    if denominator == 0.0 { None }
+    else { Some(numerator / denominator) }
+}
+
+fn find_first_even(numbers: &[i32]) -> Option<i32> {
+    for &n in numbers {
+        if n % 2 == 0 { return Some(n); }
+    }
+    None
+}
+
+fn parse_port(s: &str) -> Option<u16> {
+    s.trim().parse::<u16>().ok()
+}
+
+fn main() {
+    match divide(10.0, 3.0) {
+        Some(r) => println!("10/3 = {r:.4}"),
+        None    => println!("Cannot divide by zero"),
+    }
+    match divide(5.0, 0.0) {
+        Some(r) => println!("{r}"),
+        None    => println!("Division by zero detected."),
+    }
+
+    let odds  = [1, 3, 5, 7, 9];
+    let mixed = [1, 3, 4, 7, 8];
+    println!("First even in odds:  {:?}", find_first_even(&odds));
+    println!("First even in mixed: {:?}", find_first_even(&mixed));
+
+    let port = Some("  8080  ")
+        .map(|s| s.trim())
+        .and_then(parse_port)
+        .unwrap_or(80);
+    println!("Using port: {port}");
+}
+
+// Chapter 12 — Pattern guards, if let, while let, let-else
+
+#[derive(Debug)]
+enum Temperature { Celsius(f64), Fahrenheit(f64) }
+
+fn describe_temp(t: &Temperature) {
+    match t {
+        Temperature::Celsius(c) if *c < 0.0   => println!("{c}C: below freezing"),
+        Temperature::Celsius(c) if *c >= 100.0 => println!("{c}C: boiling or above"),
+        Temperature::Celsius(c)               => println!("{c}C: normal range"),
+        Temperature::Fahrenheit(f) if *f < 32.0 => println!("{f}F: below freezing"),
+        Temperature::Fahrenheit(f)             => println!("{f}F: above freezing"),
+    }
+}
+
+fn process_request(user_id: Option<u32>) -> String {
+    let Some(id) = user_id else {
+        return String::from("Error: no user ID");
+    };
+    format!("Processing for user {id}")
+}
+
+fn main() {
+    let temps = vec![
+        Temperature::Celsius(-10.0),
+        Temperature::Celsius(22.5),
+        Temperature::Celsius(100.0),
+        Temperature::Fahrenheit(20.0),
+    ];
+    for t in &temps { describe_temp(t); }
+
+    // if let
+    let value: Option<i32> = Some(42);
+    if let Some(v) = value { println!("Got: {v}"); }
+
+    // while let
+    let mut stack = vec![1, 2, 3, 4, 5];
+    while let Some(top) = stack.pop() { print!("{top} "); }
+    println!();
+
+    // let-else
+    println!("{}", process_request(Some(42)));
+    println!("{}", process_request(None));
+}
+
+// Chapter 12 — Exercise: Shape Area Calculator
+
+use std::fmt;
+
+enum Shape {
+    Circle(f64),
+    Rectangle(f64, f64),
+    Triangle(f64, f64, f64),
+    Square(f64),
+}
+
+impl Shape {
+    fn area(&self) -> f64 {
+        match self {
+            Shape::Circle(r)        => std::f64::consts::PI * r * r,
+            Shape::Rectangle(w, h)  => w * h,
+            Shape::Triangle(a,b,c)  => {
+                let s = (a + b + c) / 2.0;
+                (s*(s-a)*(s-b)*(s-c)).sqrt()
+            },
+            Shape::Square(s)        => s * s,
+        }
+    }
+    fn name(&self) -> &'static str {
+        match self {
+            Shape::Circle(_)    => "Circle",
+            Shape::Rectangle(..) => "Rectangle",
+            Shape::Triangle(..) => "Triangle",
+            Shape::Square(_)    => "Square",
+        }
+    }
+}
+
+impl fmt::Display for Shape {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} (area={:.4})", self.name(), self.area())
+    }
+}
+
+fn main() {
+    let shapes = vec![
+        Shape::Circle(5.0),
+        Shape::Rectangle(4.0, 6.0),
+        Shape::Triangle(3.0, 4.0, 5.0),
+        Shape::Square(7.0),
+    ];
+    for s in &shapes { println!("{s}"); }
+
+    let total: f64 = shapes.iter().map(|s| s.area()).sum();
+    println!("Total area: {total:.4}");
+
+    if let Some(Shape::Circle(r)) = shapes.iter().find(|s| matches!(s, Shape::Circle(_))) {
+        println!("First circle radius: {r}");
+    }
+}
