@@ -1,0 +1,83 @@
+// Chapter 15 — Inline modules and paths
+
+mod garden {
+    pub mod vegetables {
+        #[derive(Debug)]
+        pub struct Asparagus { pub weight_grams: u32 }
+    }
+}
+
+mod kitchen {
+    pub mod prep {
+        pub fn chop(ingredient: &str) { println!("Chopping {ingredient}"); }
+    }
+}
+
+pub fn harvest() {
+    let plant = crate::garden::vegetables::Asparagus { weight_grams: 150 };
+    println!("Harvested: {:?}", plant);
+    crate::kitchen::prep::chop("garlic");
+}
+
+mod accounts {
+    #[derive(Debug)]
+    pub struct Account {
+        pub username: String,
+        balance: f64,
+    }
+    impl Account {
+        pub fn new(username: String) -> Account { Account { username, balance: 0.0 } }
+        pub fn balance(&self) -> f64 { self.balance }
+        pub fn deposit(&mut self, amount: f64) -> Result<(), String> {
+            if amount <= 0.0 { return Err(String::from("Must be positive")); }
+            self.balance += amount;
+            Ok(())
+        }
+    }
+}
+
+fn main() {
+    harvest();
+
+    let mut acc = accounts::Account::new(String::from("ayoub"));
+    println!("Balance: {}", acc.balance());
+    acc.deposit(500.0).expect("Deposit failed");
+    println!("After deposit: {}", acc.balance());
+}
+
+// Chapter 15 — The use keyword and visibility
+
+use std::collections::{HashMap, HashSet};
+use std::collections::BTreeMap;
+use std::fmt;
+
+// Re-export pattern
+mod geometry {
+    pub mod shapes {
+        #[derive(Debug, Clone)]
+        pub struct Circle { pub radius: f64 }
+        #[derive(Debug, Clone)]
+        pub struct Rectangle { pub width: f64, pub height: f64 }
+    }
+}
+
+// Flat re-exports
+pub use geometry::shapes::Circle;
+pub use geometry::shapes::Rectangle;
+
+fn main() {
+    let mut map: HashMap<String, i32> = HashMap::new();
+    map.insert(String::from("one"), 1);
+    map.insert(String::from("two"), 2);
+    println!("{:?}", map);
+
+    let mut set: HashSet<i32> = HashSet::new();
+    set.insert(42);
+    println!("Contains 42: {}", set.contains(&42));
+
+    // Via re-export
+    let c = Circle { radius: 5.0 };
+    let r = Rectangle { width: 4.0, height: 3.0 };
+    println!("{:?}", c);
+    println!("{:?}", r);
+}
