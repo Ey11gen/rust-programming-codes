@@ -1,0 +1,117 @@
+// Chapter 16 — Generic functions
+
+fn largest<T: PartialOrd + Copy>(list: &[T]) -> T {
+    assert!(!list.is_empty(), "Cannot find largest of empty list");
+    let mut max = list[0];
+    for &item in list.iter() { if item > max { max = item; } }
+    max
+}
+
+fn zip_to_string<K: std::fmt::Display, V: std::fmt::Display>(
+    keys: &[K], vals: &[V],
+) -> Vec<String> {
+    keys.iter().zip(vals.iter()).map(|(k,v)| format!("{k}: {v}")).collect()
+}
+
+fn identity<T>(x: T) -> T { x }
+
+fn main() {
+    let numbers = vec![34, 50, 25, 100, 65];
+    let chars   = vec!['y', 'm', 'a', 'q'];
+    let floats  = vec![3.14_f64, 2.72, 1.41, 1.73];
+
+    println!("Largest int:   {}", largest(&numbers));
+    println!("Largest char:  {}", largest(&chars));
+    println!("Largest float: {}", largest(&floats));
+
+    let pairs = zip_to_string(&["Alice", "Bob", "Carla"], &[95, 82, 91]);
+    for p in &pairs { println!("{p}"); }
+
+    println!("{}", identity(42_i32));
+    println!("{}", identity("hello"));
+}
+
+// Chapter 16 — Generic structs and enums
+
+#[derive(Debug)]
+struct Stack<T> { elements: Vec<T> }
+
+impl<T> Stack<T> {
+    fn new() -> Stack<T> { Stack { elements: Vec::new() } }
+    fn push(&mut self, item: T)     { self.elements.push(item); }
+    fn pop(&mut self)  -> Option<T> { self.elements.pop() }
+    fn peek(&self)     -> Option<&T>{ self.elements.last() }
+    fn is_empty(&self) -> bool       { self.elements.is_empty() }
+}
+
+#[derive(Debug)]
+enum Tree<T> {
+    Leaf(T),
+    Node { value: T, left: Box<Tree<T>>, right: Box<Tree<T>> },
+}
+
+impl<T: PartialOrd + std::fmt::Debug> Tree<T> {
+    fn contains(&self, target: &T) -> bool {
+        match self {
+            Tree::Leaf(v) => v == target,
+            Tree::Node { value, left, right } =>
+                value == target || left.contains(target) || right.contains(target),
+        }
+    }
+}
+
+fn main() {
+    let mut stack: Stack<i32> = Stack::new();
+    for v in [10, 20, 30] { stack.push(v); }
+    println!("Peek: {:?}", stack.peek());
+    while let Some(v) = stack.pop() { print!("{v} "); }
+    println!();
+
+    let mut str_stack: Stack<String> = Stack::new();
+    str_stack.push(String::from("first"));
+    str_stack.push(String::from("second"));
+    println!("String peek: {:?}", str_stack.peek());
+
+    let tree: Tree<i32> = Tree::Node {
+        value: 10,
+        left:  Box::new(Tree::Leaf(5)),
+        right: Box::new(Tree::Leaf(15)),
+    };
+    println!("Contains 5:  {}", tree.contains(&5));
+    println!("Contains 12: {}", tree.contains(&12));
+}
+
+// Chapter 16 — Conditional impl blocks and where clauses
+
+use std::fmt::Display;
+
+#[derive(Debug)]
+struct Grid<T> { rows: usize, cols: usize, data: Vec<T> }
+
+impl<T: Clone> Grid<T> {
+    fn new(rows: usize, cols: usize, default: T) -> Self {
+        Grid { rows, cols, data: vec![default; rows * cols] }
+    }
+    fn get(&self, row: usize, col: usize) -> &T { &self.data[row * self.cols + col] }
+    fn set(&mut self, row: usize, col: usize, value: T) { self.data[row*self.cols+col] = value; }
+}
+
+impl<T: Display + Clone> Grid<T> {
+    fn print_row(&self, row: usize) {
+        for col in 0..self.cols { print!("{:>6}", self.get(row, col)); }
+        println!();
+    }
+}
+
+impl<T: PartialOrd + Clone> Grid<T> {
+    fn max_value(&self) -> Option<T> {
+        self.data.iter().reduce(|a, b| if b > a { b } else { a }).cloned()
+    }
+}
+
+fn main() {
+    let mut g: Grid<i32> = Grid::new(3, 4, 0);
+    for r in 0..3 { for c in 0..4 { g.set(r, c, (r*4+c+1) as i32); } }
+    for r in 0..3 { g.print_row(r); }
+    println!("Max: {:?}", g.max_value());
+}
