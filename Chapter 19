@@ -1,0 +1,222 @@
+// Chapter 19 — Box<T> for heap allocation and recursive types
+
+#[derive(Debug)]
+enum List {
+    Cons(i32, Box<List>),
+    Nil,
+}
+
+impl List {
+    fn cons(val: i32, tail: List) -> List { List::Cons(val, Box::new(tail)) }
+    fn to_vec(&self) -> Vec<i32> {
+        let mut result = Vec::new();
+        let mut current = self;
+        loop {
+            match current {
+                List::Nil               => break,
+                List::Cons(val, tail)   => { result.push(*val); current = tail; }
+            }
+        }
+        result
+    }
+}
+
+fn main() {
+    let boxed_int: Box<i32> = Box::new(5);
+    println!("boxed value: {boxed_int}");
+    println!("boxed + 1:   {}", *boxed_int + 1);
+
+    let list = List::cons(1, List::cons(2, List::cons(3, List::Nil)));
+    println!("List: {:?}", list.to_vec());
+
+    let large_data: Box<Vec<f64>> = Box::new(vec![0.0; 1_000]);
+    let new_owner = large_data;
+    println!("Dataset length: {}", new_owner.len());
+}
+
+// Chapter 19 — Deref and Drop traits
+
+use std::ops::Deref;
+
+struct MyBox<T>(T);
+impl<T> MyBox<T> { fn new(v: T) -> MyBox<T> { MyBox(v) } }
+impl<T> Deref for MyBox<T> {
+    type Target = T;
+    fn deref(&self) -> &T { &self.0 }
+}
+
+struct DatabaseConnection { connection_string: String, is_open: bool }
+impl DatabaseConnection {
+    fn new(cs: &str) -> Self {
+        println!("Opening: {cs}");
+        DatabaseConnection { connection_string: String::from(cs), is_open: true }
+    }
+    fn query(&self, sql: &str) { println!("Executing: {sql}"); }
+}
+impl Drop for DatabaseConnection {
+    fn drop(&mut self) {
+        self.is_open = false;
+        println!("Closing: {}", self.connection_string);
+    }
+}
+
+fn hello(name: &str) { println!("Hello, {name}!"); }
+
+fn main() {
+    let bx = MyBox::new(5_i32);
+    assert_eq!(5, *bx);
+    println!("MyBox deref: {}", *bx);
+
+    let boxed_string = MyBox::new(String::from("Rust"));
+    hello(&boxed_string);  // deref coercion: MyBox<String> -> &String -> &str
+
+    let conn = DatabaseConnection::new("postgres://localhost/db");
+    conn.query("SELECT 1");
+    // Drop called automatically at end of scope
+
+    let early = DatabaseConnection::new("mysql://localhost/test");
+    early.query("SELECT 1");
+    std::mem::drop(early);  // explicit early drop
+    println!("Early drop happened before this line.");
+}
+
+// Chapter 19 — Rc<T> and RefCell<T>
+
+use std::rc::Rc;
+use std::cell::RefCell;
+
+#[derive(Debug)]
+struct SharedConfig { database_url: String, max_connections: u32, debug_mode: bool }
+
+struct Service { name: String, config: Rc<SharedConfig> }
+impl Service {
+    fn new(name: &str, config: Rc<SharedConfig>) -> Service {
+        Service { name: String::from(name), config }
+    }
+    fn describe(&self) {
+        println!("Service '{}' -> {}", self.name, self.config.database_url);
+    }
+}
+
+// RefCell for interior mutability
+struct Logger { messages: RefCell<Vec<String>> }
+impl Logger {
+    fn new() -> Logger { Logger { messages: RefCell::new(Vec::new()) } }
+    fn log(&self, message: &str) { self.messages.borrow_mut().push(String::from(message)); }
+    fn print_all(&self) { for msg in self.messages.borrow().iter() { println!("  [LOG] {msg}"); } }
+    fn count(&self) -> usize { self.messages.borrow().len() }
+}
+
+fn main() {
+    let config = Rc::new(SharedConfig {
+        database_url:    String::from("postgres://localhost/app"),
+        max_connections: 10,
+        debug_mode:      true,
+    });
+    println!("count: {}", Rc::strong_count(&config));
+    let svc_a = Service::new("AuthService",    Rc::clone(&config));
+    let svc_b = Service::new("PaymentService", Rc::clone(&config));
+    println!("count after clones: {}", Rc::strong_count(&config));
+    svc_a.describe();
+    svc_b.describe();
+
+    let logger = Logger::new();
+    logger.log("App started");
+    logger.log("Processing request");
+    println!("Logged {} messages:", logger.count());
+    logger.print_all();
+}
+
+// Chapter 19 — Weak<T> to break reference cycles
+
+use std::rc::{Rc, Weak};
+use std::cell::RefCell;
+
+#[derive(Debug)]
+struct TreeNode {
+    value:    i32,
+    parent:   RefCell<Weak<TreeNode>>,
+    children: RefCell<Vec<Rc<TreeNode>>>,
+}
+
+impl TreeNode {
+    fn new(value: i32) -> Rc<TreeNode> {
+        Rc::new(TreeNode {
+            value,
+            parent:   RefCell::new(Weak::new()),
+            children: RefCell::new(Vec::new()),
+        })
+    }
+}
+
+fn main() {
+    let root  = TreeNode::new(1);
+    let child = TreeNode::new(2);
+
+    *child.parent.borrow_mut() = Rc::downgrade(&root);
+    root.children.borrow_mut().push(Rc::clone(&child));
+
+    println!("root  strong: {}", Rc::strong_count(&root));
+    println!("child strong: {}", Rc::strong_count(&child));
+    println!("root  weak:   {}", Rc::weak_count(&root));
+
+    if let Some(p) = child.parent.borrow().upgrade() {
+        println!("child's parent value: {}", p.value);
+    }
+
+    let weak = Rc::downgrade(&root);
+    println!("upgrade before drop: {:?}", weak.upgrade().map(|n| n.value));
+    drop(root);
+    println!("upgrade after drop:  {:?}", weak.upgrade());
+}
+
+// Chapter 19 — Exercise: Reference-Counted Graph
+
+use std::rc::Rc;
+use std::cell::RefCell;
+use std::collections::HashSet;
+
+#[derive(Debug)]
+struct GraphNode {
+    id:    u32,
+    label: String,
+    edges: Vec<Rc<RefCell<GraphNode>>>,
+}
+
+impl GraphNode {
+    fn new(id: u32, label: &str) -> Rc<RefCell<GraphNode>> {
+        Rc::new(RefCell::new(GraphNode { id, label: String::from(label), edges: Vec::new() }))
+    }
+    fn add_edge(from: &Rc<RefCell<GraphNode>>, to: Rc<RefCell<GraphNode>>) {
+        from.borrow_mut().edges.push(to);
+    }
+    fn print(node: &Rc<RefCell<GraphNode>>, visited: &mut HashSet<u32>, depth: usize) {
+        let id = node.borrow().id;
+        if visited.contains(&id) {
+            println!("{}[{}] (already visited)", "  ".repeat(depth), id);
+            return;
+        }
+        visited.insert(id);
+        println!("{}Node({}: {})", "  ".repeat(depth), id, node.borrow().label);
+        let edges: Vec<_> = node.borrow().edges.iter().map(Rc::clone).collect();
+        for edge in edges { GraphNode::print(&edge, visited, depth + 1); }
+    }
+}
+
+fn main() {
+    let n1 = GraphNode::new(1, "Start");
+    let n2 = GraphNode::new(2, "Middle");
+    let n3 = GraphNode::new(3, "Branch");
+    let n4 = GraphNode::new(4, "End");
+
+    GraphNode::add_edge(&n1, Rc::clone(&n2));
+    GraphNode::add_edge(&n1, Rc::clone(&n3));
+    GraphNode::add_edge(&n2, Rc::clone(&n4));
+    GraphNode::add_edge(&n3, Rc::clone(&n4));
+    GraphNode::add_edge(&n4, Rc::clone(&n1)); // cycle
+
+    let mut visited = HashSet::new();
+    GraphNode::print(&n1, &mut visited, 0);
+
+    println!("n1 strong count: {}", Rc::strong_count(&n1));
+}
