@@ -1,0 +1,104 @@
+// Chapter 9 — Explicit lifetime annotations
+
+// The returned reference lives as long as both inputs.
+fn longer<'a>(a: &'a str, b: &'a str) -> &'a str {
+    if a.len() >= b.len() { a } else { b }
+}
+
+// Two independent lifetime parameters.
+fn first_of<'a, 'b>(a: &'a str, _b: &'b str) -> &'a str {
+    a
+}
+
+// Generic with lifetime.
+fn first_item<'a, T>(items: &'a [T]) -> Option<&'a T> {
+    items.first()
+}
+
+fn main() {
+    let s1 = String::from("long string");
+    let result;
+    {
+        let s2 = String::from("xyz");
+        result = longer(&s1, &s2);
+        println!("Longer: {result}");
+    }  // s2 dropped here; result cannot be used after this
+
+    let second = String::from("another long string");
+    let long_result = longer(&s1, &second);
+    println!("Outside block: {long_result}");
+
+    let numbers = [1, 2, 3, 4, 5];
+    println!("First: {:?}", first_item(&numbers));
+}
+
+// Chapter 9 — Lifetimes in structs
+
+struct TextSummary<'a> {
+    title:   &'a str,
+    excerpt: &'a str,
+    length:  usize,
+}
+
+impl<'a> TextSummary<'a> {
+    fn new(title: &'a str, text: &'a str) -> Self {
+        TextSummary {
+            title,
+            excerpt: &text[..text.len().min(50)],
+            length: text.len(),
+        }
+    }
+
+    fn display(&self) {
+        println!("Title:   {}", self.title);
+        println!("Excerpt: {}...", self.excerpt);
+        println!("Length:  {} chars", self.length);
+    }
+}
+
+fn main() {
+    let article = String::from(
+        "Rust ownership enables safe memory management without garbage collection."
+    );
+    let title = String::from("Understanding Rust Ownership");
+    let summary = TextSummary::new(&title, &article);
+    summary.display();
+    println!("Full length: {}", summary.length);
+}
+
+// Chapter 9 — Lifetime elision rules
+
+// Rule 2 applies: one input lifetime -> assigned to output.
+// Equivalent to: fn first_word<'a>(s: &'a str) -> &'a str
+fn first_word(s: &str) -> &str {
+    let bytes = s.as_bytes();
+    for (i, &byte) in bytes.iter().enumerate() {
+        if byte == b' ' { return &s[..i]; }
+    }
+    &s[..]
+}
+
+// Rule 3 applies: &self lifetime assigned to output.
+struct Article { content: String }
+impl Article {
+    fn excerpt(&self, n: &usize) -> &str {
+        &self.content[..*n.min(&self.content.len())]
+    }
+}
+
+// 'static lifetime: string literals live forever.
+fn get_greeting(formal: bool) -> &'static str {
+    if formal { "Good day." } else { "Hey!" }
+}
+
+fn main() {
+    let sentence = String::from("hello world from Rust");
+    println!("First word: {}", first_word(&sentence));
+
+    let a = Article { content: String::from("Rust is amazing and safe.") };
+    let n = 10_usize;
+    println!("Excerpt: {}", a.excerpt(&n));
+
+    println!("{}", get_greeting(true));
+    println!("{}", get_greeting(false));
+}
