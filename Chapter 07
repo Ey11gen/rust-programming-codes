@@ -1,0 +1,123 @@
+// Chapter 7 — Immutable references
+
+fn calculate_length(s: &String) -> usize {
+    s.len()
+}
+
+fn print_info(name: &str, score: &f64, active: &bool) {
+    println!("Name:   {name}");
+    println!("Score:  {score:.2}");
+    println!("Active: {active}");
+}
+
+fn highest_of(a: &f64, b: &f64) -> f64 {
+    if a >= b { *a } else { *b }
+}
+
+fn main() {
+    let s = String::from("hello, world");
+    let length = calculate_length(&s);
+    println!("'{}' has {} characters.", s, length);
+
+    let name   = String::from("Ayoub");
+    let score  = 94.5_f64;
+    let active = true;
+    print_info(&name, &score, &active);
+
+    let a = 7.5_f64;
+    let b = 12.3_f64;
+    let h = highest_of(&a, &b);
+    println!("Highest: {h}");
+    println!("a={a}, b={b}");  // both still valid
+
+    // Multiple immutable references at once: fine
+    let ref1 = &score;
+    let ref2 = &score;
+    println!("ref1={ref1}, ref2={ref2}");
+}
+
+// Chapter 7 — Mutable references
+
+fn append_exclamation(s: &mut String) {
+    s.push_str("!");
+}
+
+fn double_all(numbers: &mut Vec<i32>) {
+    for n in numbers.iter_mut() {
+        *n *= 2;
+    }
+}
+
+fn main() {
+    let mut message = String::from("Hello");
+    append_exclamation(&mut message);
+    println!("{message}");  // Hello!
+    append_exclamation(&mut message);
+    println!("{message}");  // Hello!!
+
+    let mut nums = vec![1, 2, 3, 4, 5];
+    double_all(&mut nums);
+    println!("{:?}", nums);  // [2, 4, 6, 8, 10]
+
+    // Sequential mutable borrows: fine
+    let mut value = 10;
+    {
+        let r1 = &mut value;
+        *r1 += 1;
+        println!("via r1: {r1}");
+    }
+    let r2 = &mut value;
+    *r2 *= 3;
+    println!("via r2: {r2}");
+}
+
+// Chapter 7 — Rust prevents dangling references
+
+// fn dangle() -> &String { // would NOT compile
+//     let s = String::from("I live inside dangle");
+//     &s  // s dropped at end of function
+// }
+
+// Correct: return the String itself (ownership transfer)
+fn no_dangle() -> String {
+    let s = String::from("I live inside no_dangle");
+    s
+}
+
+fn main() {
+    let result = no_dangle();
+    println!("{result}");
+
+    // Borrow checker: element reference blocks Vec mutation
+    let mut scores = vec![10, 20, 30];
+    let first = &scores[0];
+    println!("first element: {first}");  // first used here
+    // first's borrow ends after its last use ^
+
+    scores.push(40);  // now allowed
+    println!("{:?}", scores);
+}
+
+// Chapter 7 — Exercise: Reference Practice
+
+fn first_element(slice: &[i32]) -> i32 {
+    slice[0]
+}
+
+fn sum_of_slice(slice: &[i32]) -> i32 {
+    slice.iter().sum()
+}
+
+fn reset_all(v: &mut Vec<i32>) {
+    for x in v.iter_mut() { *x = 0; }
+}
+
+fn main() {
+    let mut data = vec![5, 10, 15, 20, 25];
+    let first = first_element(&data);
+    let total = sum_of_slice(&data);
+    println!("First: {first}, Sum: {total}");
+
+    reset_all(&mut data);
+    println!("After reset: {:?}", data);
+}
