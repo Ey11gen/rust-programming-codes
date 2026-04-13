@@ -1,0 +1,217 @@
+// Chapter 3 — if, else if, and else
+
+fn main() {
+    let temperature = 28;
+
+    if temperature > 30 {
+        println!("It is hot outside.");
+    } else if temperature > 20 {
+        println!("The weather is pleasant.");
+    } else if temperature > 10 {
+        println!("It is a bit cool.");
+    } else {
+        println!("It is cold outside.");
+    }
+
+    // Boolean logic in conditions
+    let age    = 22;
+    let has_id = true;
+    let is_vip = false;
+
+    if age >= 18 && has_id {
+        println!("Entry permitted.");
+    }
+    if age < 18 || !has_id {
+        println!("Entry denied.");
+    }
+    if (age >= 18 && has_id) || is_vip {
+        println!("Welcome!");
+    }
+
+    // if as an expression
+    let score = 74;
+    let grade = if score >= 90 {
+        "A"
+    } else if score >= 80 {
+        "B"
+    } else if score >= 70 {
+        "C"
+    } else {
+        "F"
+    };
+    println!("Your grade is: {grade}");
+}
+
+// Chapter 3 — loop, break, continue, and returning values
+
+fn main() {
+    // Basic loop with break
+    let mut attempt = 0;
+    loop {
+        attempt += 1;
+        println!("Attempt number: {attempt}");
+        if attempt >= 3 {
+            println!("Reached maximum attempts. Stopping.");
+            break;
+        }
+    }
+
+    // continue to skip even numbers
+    let mut n = 0;
+    loop {
+        n += 1;
+        if n > 10 { break; }
+        if n % 2 == 0 { continue; }
+        println!("Odd number: {n}");
+    }
+
+    // loop returning a value
+    let mut counter = 0;
+    let result = loop {
+        counter += 1;
+        if counter == 10 {
+            break counter * counter;
+        }
+    };
+    println!("Loop produced: {result}");
+
+    // Labeled loops
+    let mut found_pair = false;
+    'outer: for i in 1..=5 {
+        for j in 1..=5 {
+            if i + j == 7 {
+                println!("Found pair: {i} + {j} = 7");
+                found_pair = true;
+                break 'outer;
+            }
+        }
+    }
+    if found_pair { println!("Search complete."); }
+}
+
+// Chapter 3 — while loop
+
+fn main() {
+    // FizzBuzz with while
+    let mut number = 1;
+    while number <= 20 {
+        if number % 15 == 0 {
+            println!("{number}: FizzBuzz");
+        } else if number % 3 == 0 {
+            println!("{number}: Fizz");
+        } else if number % 5 == 0 {
+            println!("{number}: Buzz");
+        } else {
+            println!("{number}");
+        }
+        number += 1;
+    }
+
+    // Sentinel-value pattern
+    let buffer: [u8; 8] = [72, 101, 108, 108, 111, 33, 0, 0];
+    let mut index = 0;
+    while index < buffer.len() && buffer[index] != 0 {
+        print!("{}", buffer[index] as char);
+        index += 1;
+    }
+    println!();
+}
+
+// Chapter 3 — for loops, ranges, and iterator adapters
+
+fn main() {
+    // for over array
+    let fruits = ["apple", "banana", "cherry", "date", "elderberry"];
+    for fruit in fruits {
+        println!("I like {fruit}");
+    }
+
+    // Exclusive and inclusive ranges
+    for i in 1..5  { print!("{i}  "); } println!();
+    for i in 1..=5 { print!("{i}  "); } println!();
+    for i in (1..=5).rev() { print!("{i}  "); } println!();
+
+    // enumerate
+    let planets = ["Mercury", "Venus", "Earth", "Mars", "Jupiter"];
+    for (index, planet) in planets.iter().enumerate() {
+        println!("Planet {}: {}", index + 1, planet);
+    }
+
+    // iterator adapters preview
+    let numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    let even_sum: u32 = numbers.iter().filter(|&&x| x % 2 == 0).sum();
+    println!("Sum of even numbers: {even_sum}");
+
+    // Tuple destructuring in for
+    let coordinates = [(0, 0), (1, 2), (3, 4), (5, 6)];
+    for (x, y) in coordinates {
+        let distance = ((x*x + y*y) as f64).sqrt();
+        println!("({x}, {y}) -> distance: {distance:.2}");
+    }
+}
+
+// Chapter 3 — Nested control flow and practical patterns
+
+fn main() {
+    // Sieve: nested loops with labeled continue
+    'outer: for candidate in 2..=30 {
+        for divisor in 2..candidate {
+            if candidate % divisor == 0 {
+                continue 'outer;
+            }
+        }
+        println!("{candidate} is prime");
+    }
+
+    // Accumulator pattern
+    let grades = [85.0_f64, 92.0, 78.5, 95.0, 88.0, 71.5, 90.0];
+    let mut sum     = 0.0;
+    let mut highest = f64::NEG_INFINITY;
+    let mut lowest  = f64::INFINITY;
+    for &grade in grades.iter() {
+        sum += grade;
+        if grade > highest { highest = grade; }
+        if grade < lowest  { lowest  = grade; }
+    }
+    let average = sum / grades.len() as f64;
+    println!("Average: {average:.2}");
+    println!("Highest: {highest}");
+    println!("Lowest:  {lowest}");
+}
+
+// Chapter 3 — Exercise: Collatz Sequence
+
+fn main() {
+    let mut n: u64 = 27;
+    let mut steps  = 0;
+    println!("Starting value: {n}");
+
+    loop {
+        println!("{n}");
+        if n == 1 { break; }
+        if n % 2 == 0 {
+            n /= 2;
+        } else {
+            n = 3 * n + 1;
+        }
+        steps += 1;
+    }
+    println!("Reached 1 in {steps} steps.");
+}
+
+// Chapter 3 — Exercise: Multiplication Table
+
+fn main() {
+    print!("    ");
+    for i in 1..=10 { print!("{:>4}", i); }
+    println!();
+    println!("{}", "-".repeat(44));
+
+    for i in 1..=10 {
+        print!("{:>4}", i);
+        for j in 1..=10 {
+            print!("{:>4}", i * j);
+        }
+        println!();
+    }
+}
