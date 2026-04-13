@@ -1,0 +1,117 @@
+// Chapter 8 — String slices (&str)
+
+fn first_word(s: &str) -> &str {
+    for (i, byte) in s.bytes().enumerate() {
+        if byte == b' ' { return &s[..i]; }
+    }
+    &s[..]
+}
+
+fn describe(input: &str) {
+    println!("Input:          '{input}'");
+    println!("Length (bytes): {}", input.len());
+    println!("Chars:          {}", input.chars().count());
+    println!("Starts 'He':    {}", input.starts_with("He"));
+    println!("To upper:       {}", input.to_uppercase());
+}
+
+fn main() {
+    let sentence = String::from("hello world from Rust");
+    let word = first_word(&sentence);
+    println!("First word: {word}");
+
+    describe("Hello, Rust!");
+    describe(&sentence);
+    describe(&sentence[0..4]);
+
+    // split and collect
+    let csv = "one,two,three,four";
+    let parts: Vec<&str> = csv.split(',').collect();
+    println!("Parts: {:?}", parts);
+
+    // UTF-8 awareness
+    let arabic = String::from("مرحبا");
+    println!("Arabic bytes:  {}", arabic.len());
+    println!("Arabic chars:  {}", arabic.chars().count());
+}
+
+// Chapter 8 — Array and vector slices (&[T])
+
+fn sum(values: &[f64]) -> f64 {
+    values.iter().sum()
+}
+
+fn max_value(values: &[f64]) -> Option<f64> {
+    if values.is_empty() { return None; }
+    let mut max = f64::NEG_INFINITY;
+    for &v in values { if v > max { max = v; } }
+    Some(max)
+}
+
+fn normalize(data: &mut [f64]) {
+    let max = data.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    if max == 0.0 { return; }
+    for x in data.iter_mut() { *x /= max; }
+}
+
+fn main() {
+    let arr: [f64; 5] = [1.1, 2.2, 3.3, 4.4, 5.5];
+    println!("Array sum: {}",   sum(&arr));
+    println!("Array max: {:?}", max_value(&arr));
+
+    let mut vec: Vec<f64> = vec![10.0, 20.5, 15.2, 8.7];
+    println!("Vec sum:   {}",   sum(&vec));
+    normalize(&mut vec);
+    println!("Normalized: {:?}", vec);
+
+    // Slice a portion
+    let numbers = vec![1, 2, 3, 4, 5, 6, 7, 8];
+    let mid = numbers.len() / 2;
+    let (left, right) = (&numbers[..mid], &numbers[mid..]);
+    println!("Left: {:?}, Right: {:?}", left, right);
+
+    let mut scores = vec![85, 42, 97, 63, 71, 55, 88];
+    scores.sort();
+    println!("Sorted: {:?}", scores);
+    for chunk in scores.chunks(3) {
+        println!("Chunk: {:?} sum={}", chunk, chunk.iter().sum::<i32>());
+    }
+}
+
+// Chapter 8 — Exercise: Word Processing Functions
+
+fn count_words(text: &str) -> usize {
+    text.split_whitespace().count()
+}
+
+fn longest_word(text: &str) -> &str {
+    text.split_whitespace()
+        .max_by_key(|w| w.len())
+        .unwrap_or("")
+}
+
+fn contains_word(text: &str, target: &str) -> bool {
+    text.split_whitespace().any(|w| w == target)
+}
+
+fn median(data: &[f64]) -> f64 {
+    let mut sorted = data.to_vec();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let mid = sorted.len() / 2;
+    if sorted.len() % 2 == 0 {
+        (sorted[mid - 1] + sorted[mid]) / 2.0
+    } else {
+        sorted[mid]
+    }
+}
+
+fn main() {
+    let text = "Rust is a systems programming language focused on safety";
+    println!("Words:    {}",   count_words(text));
+    println!("Longest:  {}",   longest_word(text));
+    println!("Has 'Rust': {}", contains_word(text, "Rust"));
+    println!("Has 'Java': {}", contains_word(text, "Java"));
+
+    let data = [3.0, 1.0, 4.0, 1.0, 5.0, 9.0, 2.0, 6.0];
+    println!("Median: {}", median(&data));
+}
