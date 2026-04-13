@@ -1,0 +1,183 @@
+// Chapter 14 — panic!, assert!, and diverging functions
+
+fn divide(a: i32, b: i32) -> i32 {
+    if b == 0 { panic!("Division by zero: 'b' must not be zero"); }
+    a / b
+}
+
+fn access_element(v: &[i32], index: usize) -> i32 {
+    assert!(index < v.len(),
+            "Index {index} is out of bounds for slice of length {}", v.len());
+    v[index]
+}
+
+fn parse_positive_numbers(inputs: &[&str]) -> Vec<u32> {
+    let mut result = Vec::new();
+    for &input in inputs {
+        let n: u32 = match input.trim().parse() {
+            Ok(num) => num,
+            Err(_)  => { println!("Skipping '{input}'"); continue; }
+        };
+        result.push(n);
+    }
+    result
+}
+
+fn main() {
+    println!("{}", divide(10, 2));
+    let v = vec![10, 20, 30];
+    println!("{}", access_element(&v, 1));
+
+    let inputs = ["42", "hello", "7", "bad", "100"];
+    println!("{:?}", parse_positive_numbers(&inputs));
+}
+
+// Chapter 14 — Result<T,E> and handling strategies
+
+use std::num::ParseIntError;
+
+fn parse_positive(s: &str) -> Result<u32, ParseIntError> {
+    s.trim().parse::<u32>()
+}
+
+fn main() {
+    // match
+    match parse_positive("42") {
+        Ok(n)  => println!("Parsed: {n}"),
+        Err(e) => println!("Error: {e}"),
+    }
+
+    // unwrap_or
+    let safe = parse_positive("not a number").unwrap_or(0);
+    println!("Safe default: {safe}");
+
+    // map and and_then
+    let doubled = parse_positive("21").map(|n| n * 2);
+    println!("Doubled: {:?}", doubled);
+
+    // Chaining with and_then
+    let result = parse_positive("  15  ")
+        .map(|n| n * n)
+        .map(|n| format!("squared: {n}"));
+    println!("{:?}", result);
+}
+
+// Chapter 14 — The ? operator
+
+use std::fs;
+use std::io;
+use std::num::ParseIntError;
+
+fn read_file_question(path: &str) -> Result<String, io::Error> {
+    let content = fs::read_to_string(path)?;
+    Ok(content.to_uppercase())
+}
+
+fn process_config(path: &str) -> Result<Vec<String>, io::Error> {
+    let raw = fs::read_to_string(path)?;
+    let lines: Vec<String> = raw.lines()
+        .map(|l| l.trim().to_string())
+        .filter(|l| !l.is_empty() && !l.starts_with('#'))
+        .collect();
+    Ok(lines)
+}
+
+fn main() -> Result<(), io::Error> {
+    match read_file_question("Cargo.toml") {
+        Ok(content) => println!("Read {} chars", content.len()),
+        Err(e)      => println!("Could not read file: {e}"),
+    }
+    match process_config("Cargo.toml") {
+        Ok(lines) => println!("Config lines: {}", lines.len()),
+        Err(e)    => println!("Error: {e}"),
+    }
+    Ok(())
+}
+
+// Chapter 14 — Custom error types
+
+use std::fmt;
+use std::num::ParseIntError;
+
+#[derive(Debug)]
+enum AppError {
+    Io(std::io::Error),
+    Parse(ParseIntError),
+    InvalidRange { value: i32, min: i32, max: i32 },
+    Custom(String),
+}
+
+impl fmt::Display for AppError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            AppError::Io(e)                          => write!(f, "IO error: {e}"),
+            AppError::Parse(e)                       => write!(f, "Parse error: {e}"),
+            AppError::InvalidRange{value,min,max}    => write!(f, "{value} outside [{min},{max}]"),
+            AppError::Custom(msg)                    => write!(f, "{msg}"),
+        }
+    }
+}
+impl std::error::Error for AppError {}
+impl From<ParseIntError> for AppError { fn from(e: ParseIntError) -> Self { AppError::Parse(e) } }
+impl From<std::io::Error> for AppError { fn from(e: std::io::Error) -> Self { AppError::Io(e) } }
+
+fn parse_bounded(s: &str, min: i32, max: i32) -> Result<i32, AppError> {
+    let value: i32 = s.trim().parse()?;
+    if value < min || value > max {
+        return Err(AppError::InvalidRange { value, min, max });
+    }
+    Ok(value)
+}
+
+fn main() {
+    for input in &["42", "150", "hello", " 5 "] {
+        match parse_bounded(input, 0, 100) {
+            Ok(v)  => println!("'{}' -> {v}", input.trim()),
+            Err(e) => println!("'{}' -> ERROR: {e}", input.trim()),
+        }
+    }
+}
+
+// Chapter 14 — Validated types (parse don't validate)
+
+use std::fmt;
+
+#[derive(Debug)]
+struct ValidatedAge(u32);
+
+#[derive(Debug)]
+enum AgeError { TooYoung(u32), TooOld(u32), ParseError(String) }
+
+impl fmt::Display for AgeError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            AgeError::TooYoung(a)    => write!(f, "Age {a} is too young (min: 18)"),
+            AgeError::TooOld(a)      => write!(f, "Age {a} is too old (max: 120)"),
+            AgeError::ParseError(s)  => write!(f, "Cannot parse '{s}' as age"),
+        }
+    }
+}
+
+impl ValidatedAge {
+    fn new(input: &str) -> Result<ValidatedAge, AgeError> {
+        let age: u32 = input.trim().parse()
+            .map_err(|_| AgeError::ParseError(input.trim().to_string()))?;
+        if age < 18  { return Err(AgeError::TooYoung(age)); }
+        if age > 120 { return Err(AgeError::TooOld(age));   }
+        Ok(ValidatedAge(age))
+    }
+    fn value(&self) -> u32 { self.0 }
+}
+
+fn register_user(age: ValidatedAge) {
+    println!("Registering user aged {}.", age.value());
+}
+
+fn main() {
+    for input in &["25", "15", "150", "thirty"] {
+        match ValidatedAge::new(input) {
+            Ok(age)  => register_user(age),
+            Err(e)   => println!("Validation failed: {e}"),
+        }
+    }
+}
