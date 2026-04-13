@@ -1,0 +1,192 @@
+// Chapter 4 — Defining functions, parameters, and arguments
+
+fn greet(name: &str) {
+    println!("Hello, {}! Welcome to Rust.", name);
+}
+
+fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+fn describe_number(n: i32) {
+    let description = if n > 0 { "positive" }
+                      else if n < 0 { "negative" }
+                      else { "zero" };
+    println!("{n} is {description}");
+}
+
+fn describe_rectangle(width: f64, height: f64, label: &str) {
+    let area      = width * height;
+    let perimeter = 2.0 * (width + height);
+    println!("{label}: {width} x {height}");
+    println!("  Area:      {area:.2}");
+    println!("  Perimeter: {perimeter:.2}");
+}
+
+fn main() {
+    greet("Ayoub");
+    let sum = add(14, 28);
+    println!("14 + 28 = {sum}");
+    describe_number(-7);
+    describe_number(0);
+    describe_number(42);
+    describe_rectangle(10.5, 4.2, "Room A");
+}
+
+// Chapter 4 — Statements vs expressions and the semicolon rule
+
+fn five() -> i32 {
+    5   // no semicolon: expression; returned
+}
+
+fn add_one(x: i32) -> i32 {
+    x + 1  // implicit return
+}
+
+fn print_sum(a: i32, b: i32) {
+    let s = a + b;
+    println!("Sum: {s}");
+}
+
+fn main() {
+    let n = five();
+    let m = add_one(n);
+    println!("five()     = {n}");
+    println!("add_one(5) = {m}");
+    print_sum(3, 7);
+
+    // Block as expression
+    let y = {
+        let x = 3;
+        let x_squared = x * x;
+        x_squared + 1  // block evaluates to 10
+    };
+    println!("y = {y}");
+}
+
+// Chapter 4 — Return values: implicit and explicit
+
+fn divide(numerator: f64, denominator: f64) -> f64 {
+    if denominator == 0.0 {
+        println!("Warning: division by zero, returning 0.");
+        return 0.0;  // explicit early return
+    }
+    numerator / denominator  // implicit return
+}
+
+fn min_max(numbers: &[f64]) -> (f64, f64) {
+    let mut min = f64::INFINITY;
+    let mut max = f64::NEG_INFINITY;
+    for &n in numbers {
+        if n < min { min = n; }
+        if n > max { max = n; }
+    }
+    (min, max)
+}
+
+fn main() {
+    println!("{:.4}", divide(10.0, 3.0));
+    println!("{:.4}", divide(5.0,  0.0));
+
+    let data = [3.5, 1.2, 8.7, 2.1, 9.0, 4.4];
+    let (minimum, maximum) = min_max(&data);
+    println!("Minimum: {minimum}");
+    println!("Maximum: {maximum}");
+}
+
+// Chapter 4 — Closures: anonymous functions that capture their environment
+
+fn make_adder(n: i32) -> impl Fn(i32) -> i32 {
+    move |x| x + n
+}
+
+fn apply_twice<F: Fn(i32) -> i32>(f: F, x: i32) -> i32 {
+    f(f(x))
+}
+
+fn main() {
+    let double   = |x| x * 2;
+    let square   = |x: i32| x * x;
+    let base     = 10;
+    let add_base = |x| x + base;
+
+    println!("double(5)   = {}", double(5));
+    println!("square(7)   = {}", square(7));
+    println!("add_base(3) = {}", add_base(3));
+
+    let numbers = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    let doubled: Vec<i32>  = numbers.iter().map(|&x| x * 2).collect();
+    let evens: Vec<i32>    = numbers.iter().filter(|&&x| x % 2 == 0).cloned().collect();
+    println!("Doubled: {:?}", doubled);
+    println!("Evens:   {:?}", evens);
+
+    let add5  = make_adder(5);
+    let add10 = make_adder(10);
+    println!("add5(3)  = {}", add5(3));
+    println!("add10(3) = {}", add10(3));
+
+    println!("apply_twice(double, 3) = {}", apply_twice(double, 3));
+    println!("apply_twice(|x| x+10, 0) = {}", apply_twice(|x| x + 10, 0));
+}
+
+// Chapter 4 — Nested functions and scope
+
+fn analyze_text(text: &str) {
+    fn count_vowels(s: &str) -> usize {
+        s.chars().filter(|c| "aeiouAEIOU".contains(*c)).count()
+    }
+    fn count_words(s: &str) -> usize {
+        s.split_whitespace().count()
+    }
+    let vowels = count_vowels(text);
+    let words  = count_words(text);
+    let chars  = text.chars().count();
+    println!("Text:   '{text}'");
+    println!("Words:  {words}");
+    println!("Chars:  {chars}");
+    println!("Vowels: {vowels}");
+}
+
+fn average(scores: &[i32]) -> i32 {
+    scores.iter().sum::<i32>() / scores.len() as i32
+}
+
+fn letter_grade(avg: i32) -> &'static str {
+    if avg >= 90 { "A" }
+    else if avg >= 80 { "B" }
+    else if avg >= 70 { "C" }
+    else { "F" }
+}
+
+fn report_grades(scores: &[i32]) {
+    let avg   = average(scores);
+    let grade = letter_grade(avg);
+    println!("Average: {avg}, Grade: {grade}");
+}
+
+fn main() {
+    analyze_text("Rust is an amazing language");
+    println!();
+    let scores = vec![88, 92, 71, 95, 83, 67, 90];
+    report_grades(&scores);
+}
+
+// Chapter 4 — Exercise: Temperature Conversion Library
+
+fn celsius_to_fahrenheit(c: f64) -> f64 { c * 9.0 / 5.0 + 32.0 }
+fn fahrenheit_to_celsius(f: f64) -> f64 { (f - 32.0) * 5.0 / 9.0 }
+fn celsius_to_kelvin(c: f64)    -> f64 { c + 273.15 }
+
+fn print_conversions(celsius: f64) {
+    let f = celsius_to_fahrenheit(celsius);
+    let k = celsius_to_kelvin(celsius);
+    println!("{celsius:.2} C  =  {f:.2} F  =  {k:.2} K");
+}
+
+fn main() {
+    println!("{:<10} {:<14} {:<14}", "Celsius", "Fahrenheit", "Kelvin");
+    println!("{}", "-".repeat(40));
+    for &c in &[0.0, 100.0, -40.0, -273.15, 37.0] {
+        print_conversions(c);
+    }
+}
