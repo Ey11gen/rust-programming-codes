@@ -1,0 +1,104 @@
+// Chapter 5 — Line comments, block comments, and best practices
+
+fn orbit_parameters() {
+    let radius_km   = 6_371.0_f64;    // Earth's mean radius, kilometers
+    let altitude_km = 400.0_f64;      // ISS average orbital altitude, km
+    let total_km    = radius_km + altitude_km;
+    let gravity_ms2 = 9.80665_f64;    // standard gravity, m/s^2
+
+    // Convert to meters for orbital velocity calculation
+    let r_m = total_km * 1000.0;
+    let v   = (gravity_ms2 * radius_km * radius_km * 1_000_000.0 / r_m).sqrt();
+
+    println!("Orbital velocity: {v:.1} m/s");
+}
+
+fn main() {
+    // This is a line comment: explains WHY, not what.
+    orbit_parameters();
+
+    /*
+       Block comments are useful for temporarily disabling
+       multiple lines of code during debugging.
+    */
+    println!("Comments make code readable and maintainable.");
+}
+
+// Chapter 5 — Documentation comments with ///
+
+/// Computes the arithmetic mean (average) of a slice of f64 values.
+///
+/// Returns the mean as an f64. If the slice is empty, returns 0.0.
+///
+/// # Arguments
+///
+/// * `values` - A slice of floating-point numbers to average.
+///
+/// # Examples
+///
+/// ```
+/// let data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+/// assert_eq!(mean(&data), 3.0);
+/// ```
+pub fn mean(values: &[f64]) -> f64 {
+    if values.is_empty() { return 0.0; }
+    values.iter().sum::<f64>() / values.len() as f64
+}
+
+/// Computes the population variance of the provided values.
+///
+/// # Examples
+///
+/// ```
+/// let data = vec![2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0];
+/// let v = variance(&data);
+/// assert!((v - 4.0).abs() < 0.001);
+/// ```
+pub fn variance(values: &[f64]) -> f64 {
+    if values.is_empty() { return 0.0; }
+    let m = mean(values);
+    values.iter().map(|&x| (x - m).powi(2)).sum::<f64>() / values.len() as f64
+}
+
+/// Returns the standard deviation of the provided values.
+///
+/// Standard deviation is the square root of the variance.
+/// See [`variance`] for the variance calculation.
+pub fn std_dev(values: &[f64]) -> f64 {
+    variance(values).sqrt()
+}
+
+fn main() {
+    let data = vec![2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0];
+    println!("Mean:     {:.4}", mean(&data));
+    println!("Variance: {:.4}", variance(&data));
+    println!("Std dev:  {:.4}", std_dev(&data));
+}
+
+// Chapter 5 — Documentation with business rule comments
+
+/// Validates that a password meets the security policy requirements.
+///
+/// The policy requires:
+/// - Minimum 12 characters
+/// - At least one uppercase letter
+/// - At least one digit
+/// - At least one special character from: ! @ # $ % ^
+///
+/// Returns `true` if all requirements are met.
+fn is_valid_password(password: &str) -> bool {
+    // Policy source: Security Standard v2.3, Section 4.1
+    // Do NOT reduce minimum length below 12 without policy review.
+    let long_enough = password.len() >= 12;
+    let has_upper   = password.chars().any(|c| c.is_uppercase());
+    let has_digit   = password.chars().any(|c| c.is_ascii_digit());
+    let has_special = password.chars().any(|c| "!@#$%^".contains(c));
+    long_enough && has_upper && has_digit && has_special
+}
+
+fn main() {
+    let passwords = ["short", "LongEnoughButNoDigit!!", "Valid1Password!", "abc12!"];
+    for pw in &passwords {
+        println!("'{}': {}", pw, if is_valid_password(pw) { "VALID" } else { "INVALID" });
+    }
+}
