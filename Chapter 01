@@ -1,0 +1,36 @@
+// Chapter 1 — Your First Rust Program
+// Compile: rustc 01_hello_world.rs -o hello && ./hello
+
+fn main() {
+    println!("Hello, world!");
+}
+
+// Chapter 1 — Hello World via Cargo (src/main.rs content)
+// Create project: cargo new hello_cargo
+// Run:            cargo run
+
+fn main() {
+    println!("Hello, world!");
+}
+
+// Chapter 1 — Demonstrating cargo check vs cargo build
+// This file shows the program used to verify the toolchain.
+// Run with: cargo run  (inside a Cargo project)
+
+fn main() {
+    // After installation, verify with:
+    //   rustc --version   -> rustc 1.85.0 (4d91de4e4 2025-02-17)
+    //   cargo --version   -> cargo 1.85.0 (d73d2caf9 2024-12-31)
+
+    println!("Rust toolchain is working correctly!");
+    println!("Compiler: rustc 1.85.0");
+    println!("Package manager: cargo 1.85.0");
+}
+
+// Chapter 1 — Exercise: Modify Hello World to include your name
+
+fn main() {
+    println!("Hello, my name is Ayoub!");
+    println!("Welcome to Rust programming.");
+    println!("This is my first Rust program.");
+}
