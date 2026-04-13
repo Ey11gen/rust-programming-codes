@@ -1,0 +1,186 @@
+// Chapter 2 — Variables and Immutability
+
+fn main() {
+    let x = 5;
+    println!("The value of x is: {x}");
+
+    // Mutable variable
+    let mut score = 0;
+    println!("Initial score: {score}");
+    score = 10;
+    println!("After first point: {score}");
+    score = score + 5;
+    println!("After second event: {score}");
+}
+
+// Chapter 2 — Integer Types
+
+fn main() {
+    let small_negative: i8  = -100;
+    let byte_value:     u8  = 200;
+    let standard_int:   i32 = -1_500_000;
+    let big_positive:   u64 = 10_000_000_000;
+    let inferred_int        = 42; // defaults to i32
+
+    println!("i8  value : {small_negative}");
+    println!("u8  value : {byte_value}");
+    println!("i32 value : {standard_int}");
+    println!("u64 value : {big_positive}");
+    println!("i32 infer : {inferred_int}");
+
+    // Different number bases
+    let decimal     =   1_000;
+    let hexadecimal = 0x3E8;
+    let octal       = 0o1750;
+    let binary      = 0b11_1110_1000;
+    let byte        = b'A';
+    println!("{decimal} {hexadecimal} {octal} {binary} {byte}");
+}
+
+// Chapter 2 — Floating-Point, Boolean, and Character Types
+
+fn main() {
+    // Floats
+    let pi:     f64 = 3.14159265358979;
+    let euler:  f32 = 2.71828;
+    let gravity     = 9.80665;
+
+    let sum        = 5.5 + 4.5;
+    let difference = 10.0 - 3.7;
+    let product    = 3.0 * 2.5;
+    let quotient   = 22.0 / 7.0;
+    let remainder  = 10.5 % 3.0;
+
+    println!("pi      = {pi}");
+    println!("euler   = {euler}");
+    println!("gravity = {gravity}");
+    println!("22/7    = {quotient:.6}");
+    println!("remainder = {remainder}");
+
+    // Booleans
+    let is_active: bool = true;
+    let is_complete     = false;
+    let x = 10;
+    let y = 20;
+    let x_is_less = x < y;
+    println!("is_active   = {is_active}");
+    println!("is_complete = {is_complete}");
+    println!("x_is_less   = {x_is_less}");
+
+    // Characters
+    let letter    = 'A';
+    let digit_ch  = '9';
+    let arabic    = '\u{0627}';
+    let snowflake = '\u{2744}';
+    println!("letter:    {letter}");
+    println!("digit:     {digit_ch}");
+    println!("arabic:    {arabic}");
+    println!("snowflake: {snowflake}");
+}
+
+// Chapter 2 — Tuples and Arrays
+
+fn main() {
+    // Tuple
+    let point: (f64, f64, f64) = (1.5, -2.0, 3.7);
+    let user_record: (u32, bool, f64) = (42, true, 98.6);
+
+    println!("x: {}, y: {}, z: {}", point.0, point.1, point.2);
+    println!("ID: {}, active: {}, temp: {}", user_record.0, user_record.1, user_record.2);
+
+    // Destructuring
+    let rgb_color = (255_u8, 128_u8, 0_u8);
+    let (red, green, blue) = rgb_color;
+    println!("Red: {red}, Green: {green}, Blue: {blue}");
+
+    // Ignore fields with _
+    let record = (1001_u32, "Alice", 92.5_f64, true);
+    let (id, _, score, _) = record;
+    println!("ID: {id}, Score: {score}");
+
+    // Arrays
+    let primes = [2, 3, 5, 7, 11];
+    let temps: [f64; 5] = [22.1, 23.5, 19.8, 21.3, 24.0];
+    let flags: [bool; 10] = [false; 10];
+
+    println!("First prime:  {}", primes[0]);
+    println!("Last prime:   {}", primes[4]);
+    println!("Third temp:   {}", temps[2]);
+    println!("Array length: {}", primes.len());
+    println!("Flag[9]:      {}", flags[9]);
+}
+
+// Chapter 2 — Constants, Statics, and Shadowing
+
+const MAX_CONNECTIONS:   u32 = 1_000;
+const PI:                f64 = 3.14159265358979;
+const EARTH_RADIUS_KM:   f64 = 6_371.0;
+const APP_VERSION:       &str = "1.0.0";
+const SECONDS_PER_HOUR:  u32 = 60 * 60;
+
+static GREETING: &str = "Welcome to the Rust programming language.";
+
+fn main() {
+    println!("Max connections: {MAX_CONNECTIONS}");
+    println!("PI:              {PI}");
+    println!("Earth radius:    {EARTH_RADIUS_KM} km");
+    println!("App version:     {APP_VERSION}");
+    println!("Seconds/hour:    {SECONDS_PER_HOUR}");
+    println!("{GREETING}");
+
+    // Shadowing
+    let x = 5;
+    println!("x before shadow: {x}");
+    let x = x + 1;
+    println!("x after +1:      {x}");
+    {
+        let x = x * 2;
+        println!("x inside block:  {x}");
+    }
+    println!("x after block:   {x}");
+
+    // Shadowing changes type
+    let input = "   42   ";
+    let input = input.trim();
+    let input: u32 = input.parse().expect("Expected a valid number");
+    let input = input * 2;
+    println!("Parsed & doubled: {input}");
+}
+
+// Chapter 2 — Exercise: Type Explorer
+
+fn main() {
+    let a: i8   = -100;
+    let b: u32  = 4_294_967_295;
+    let c: i64  = -9_000_000_000;
+    let d: f32  = 3.14159_f32;
+    let e: f64  = 2.718281828459045;
+    let f: bool = true;
+    let g: char = 'R';
+
+    println!("i8  : {a}");
+    println!("u32 : {b}");
+    println!("i64 : {c}");
+    println!("f32 : {d}");
+    println!("f64 : {e}");
+    println!("bool: {f}");
+    println!("char: {g}");
+}
+
+// Chapter 2 — Exercise: Constants in Practice
+
+const SECONDS_PER_MINUTE: u64 = 60;
+const MINUTES_PER_HOUR:   u64 = 60;
+const HOURS_PER_DAY:       u64 = 24;
+const DAYS_PER_YEAR:       u64 = 365;
+const SPEED_OF_LIGHT_MS:   u64 = 299_792_458;
+
+fn main() {
+    let seconds_per_year = SECONDS_PER_MINUTE * MINUTES_PER_HOUR
+        * HOURS_PER_DAY * DAYS_PER_YEAR;
+    println!("Seconds per year: {seconds_per_year}");
+
+    let light_per_year: u128 = SPEED_OF_LIGHT_MS as u128
+        * seconds_per_year as u128;
+    println!("Light travels {} meters per year", light_per_year);
+}
