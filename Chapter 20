@@ -1,0 +1,352 @@
+// Chapter 20 — Iterator trait internals and for loop desugaring
+
+fn demonstrate_desugar() {
+    let numbers = vec![1_i32, 2, 3, 4, 5];
+    // High-level for loop
+    for n in &numbers { print!("for:{n} "); } println!();
+    // Desugared form
+    let mut iter = numbers.iter();
+    loop {
+        match iter.next() {
+            Some(n) => print!("loop:{n} "),
+            None    => break,
+        }
+    }
+    println!();
+}
+
+fn show_three_modes() {
+    let mut words = vec![String::from("hello"), String::from("world"), String::from("rust")];
+    // Immutable
+    for s in &words { print!("read:{s}  "); } println!();
+    // Mutable
+    for s in &mut words { s.push('!'); }
+    println!("modified: {:?}", words);
+    // Consuming
+    for s in words { println!("owned: {s}"); }
+}
+
+fn manual_next() {
+    let v = vec![10, 20, 30];
+    let mut it = v.iter();
+    println!("{:?}", it.next());  // Some(10)
+    println!("{:?}", it.next());  // Some(20)
+    println!("{:?}", it.next());  // Some(30)
+    println!("{:?}", it.next());  // None
+}
+
+fn main() {
+    demonstrate_desugar();
+    show_three_modes();
+    manual_next();
+}
+
+// Chapter 20 — Lazy evaluation and zero-cost chains
+
+fn efficient_pipeline(data: &[i32]) -> Vec<i32> {
+    data.iter()
+        .filter(|&&x| x % 2 == 0)
+        .map(|&x| x * x)
+        .filter(|&x| x > 10)
+        .collect()
+}
+
+fn main() {
+    // Laziness demonstration: closures not called until consumed
+    let numbers = vec![1_i32, 2, 3, 4, 5];
+    let chain = numbers.iter()
+        .map(|&x| { println!("  map {x}"); x * x })
+        .filter(|&x| { println!("  filter {x}"); x > 4 });
+
+    println!("Chain built, no work done yet.");
+    println!("Consuming:");
+    let result: Vec<i32> = chain.collect();
+    println!("Result: {:?}", result);
+
+    let data: Vec<i32> = (1..=10).collect();
+    println!("Efficient pipeline: {:?}", efficient_pipeline(&data));
+}
+
+// Chapter 20 — All major iterator adapters
+
+fn main() {
+    let data: Vec<i32> = (1..=10).collect();
+
+    // map, filter, filter_map
+    let squares: Vec<i32> = data.iter().map(|&x| x*x).collect();
+    let evens: Vec<i32>   = data.iter().filter(|&&x| x%2==0).cloned().collect();
+    println!("squares: {:?}", squares);
+    println!("evens:   {:?}", evens);
+
+    let string_nums = vec!["1","two","3","four","5"];
+    let parsed: Vec<i32> = string_nums.iter().filter_map(|s| s.parse().ok()).collect();
+    println!("parsed: {:?}", parsed);
+
+    // flat_map, flatten
+    let words = vec!["hello world", "rust is great"];
+    let all_words: Vec<&str> = words.iter().flat_map(|s| s.split(' ')).collect();
+    println!("words: {:?}", all_words);
+
+    let nested = vec![vec![1,2,3], vec![4,5], vec![6,7,8,9]];
+    let flat: Vec<i32> = nested.into_iter().flatten().collect();
+    println!("flat: {:?}", flat);
+
+    // zip, chain, enumerate
+    let names  = vec!["Alice", "Bob", "Carla"];
+    let scores = vec![95, 82, 91];
+    for (name, score) in names.iter().zip(scores.iter()) { println!("  {name}: {score}"); }
+
+    let a = vec![1,2,3]; let b = vec![4,5,6];
+    let chained: Vec<i32> = a.iter().chain(b.iter()).cloned().collect();
+    println!("chained: {:?}", chained);
+
+    // take, skip, step_by, scan
+    let first5: Vec<i32> = data.iter().take(5).cloned().collect();
+    let skip5:  Vec<i32> = data.iter().skip(5).cloned().collect();
+    println!("take(5): {:?}", first5);
+    println!("skip(5): {:?}", skip5);
+
+    let every_third: Vec<i32> = (0..20_i32).step_by(3).collect();
+    println!("step_by(3): {:?}", every_third);
+
+    let running_sum: Vec<i32> = (1..=5_i32)
+        .scan(0, |acc, x| { *acc += x; Some(*acc) })
+        .collect();
+    println!("running sum: {:?}", running_sum);
+
+    // windows
+    let temps = [20.0_f64, 22.5, 19.3, 25.1, 23.8];
+    let avgs: Vec<f64> = temps.windows(3)
+        .map(|w| w.iter().sum::<f64>() / w.len() as f64)
+        .collect();
+    println!("3-day avg: {:?}", avgs);
+}
+
+// Chapter 20 — Consuming iterators: fold, sum, find, collect
+
+use std::collections::{HashMap, HashSet, BTreeMap};
+
+fn main() {
+    let numbers: Vec<i32> = (1..=10).collect();
+
+    println!("count:   {}", numbers.iter().filter(|&&x| x%2==0).count());
+    println!("sum:     {}", numbers.iter().sum::<i32>());
+    println!("product: {}", (1_i64..=10).product::<i64>());
+    println!("min:     {:?}", numbers.iter().min());
+    println!("max:     {:?}", numbers.iter().max());
+
+    let words = vec!["apple","fig","banana","cherry","kiwi"];
+    println!("shortest: {:?}", words.iter().min_by_key(|s| s.len()));
+    println!("longest:  {:?}", words.iter().max_by_key(|s| s.len()));
+
+    println!("any even: {}", numbers.iter().any(|&x| x%2==0));
+    println!("all pos:  {}", numbers.iter().all(|&x| x>0));
+    println!("find >5:  {:?}", numbers.iter().find(|&&x| x>5));
+    println!("pos of 7: {:?}", numbers.iter().position(|&x| x==7));
+
+    // fold
+    let data = vec![3.0_f64, 1.0, 4.0, 1.0, 5.0, 9.0];
+    let total = data.iter().fold(0.0, |acc, &x| acc + x);
+    println!("fold sum: {total}");
+
+    // collect into various types
+    let noisy = vec![1,2,2,3,3,3,4,4,4,4];
+    let unique: HashSet<i32> = noisy.into_iter().collect();
+    let mut sorted: Vec<i32> = unique.into_iter().collect();
+    sorted.sort();
+    println!("unique: {:?}", sorted);
+
+    let names   = vec!["Alice","Bob","Carla"];
+    let scores  = vec![95_i32, 82, 91];
+    let map: HashMap<&str, i32> = names.iter().copied().zip(scores.iter().copied()).collect();
+    println!("map: {:?}", map);
+    let bmap: BTreeMap<&str, i32> = names.iter().copied().zip(scores.iter().copied()).collect();
+    println!("bmap (sorted): {:?}", bmap);
+
+    // Collect Result
+    let good = vec!["1","2","3"];
+    let bad  = vec!["1","two","3"];
+    let r1: Result<Vec<i32>,_> = good.iter().map(|s| s.parse::<i32>()).collect();
+    let r2: Result<Vec<i32>,_> = bad.iter().map(|s| s.parse::<i32>()).collect();
+    println!("all ok:  {:?}", r1);
+    println!("has err: {}", r2.is_err());
+}
+
+// Chapter 20 — Complex data processing pipeline
+
+use std::collections::HashMap;
+
+#[derive(Debug, Clone)]
+struct Student { name: String, grades: Vec<f64>, year: u32 }
+
+impl Student {
+    fn new(name: &str, year: u32, grades: Vec<f64>) -> Student {
+        Student { name: String::from(name), grades, year }
+    }
+    fn average(&self) -> f64 {
+        if self.grades.is_empty() { return 0.0; }
+        self.grades.iter().sum::<f64>() / self.grades.len() as f64
+    }
+    fn letter_grade(&self) -> char {
+        match self.average() as u32 {
+            90..=100 => 'A', 80..=89 => 'B', 70..=79 => 'C', 60..=69 => 'D', _ => 'F'
+        }
+    }
+}
+
+fn main() {
+    let students = vec![
+        Student::new("Alice",  1, vec![92.0, 88.0, 95.0, 91.0]),
+        Student::new("Bob",    2, vec![75.0, 82.0, 70.0, 68.0]),
+        Student::new("Carla",  1, vec![88.0, 90.0, 87.0, 93.0]),
+        Student::new("David",  3, vec![60.0, 55.0, 72.0, 80.0]),
+        Student::new("Eva",    2, vec![95.0, 98.0, 97.0, 96.0]),
+        Student::new("Grace",  1, vec![85.0, 89.0, 91.0, 94.0]),
+    ];
+
+    // Honor roll
+    println!("--- Honor Roll (avg >= 85) ---");
+    let mut honor: Vec<&Student> = students.iter().filter(|s| s.average() >= 85.0).collect();
+    honor.sort_by(|a,b| b.average().partial_cmp(&a.average()).unwrap());
+    for s in &honor { println!("  {} ({:.1}) - {}", s.name, s.average(), s.letter_grade()); }
+
+    // Class average
+    let class_avg = students.iter().map(|s| s.average()).sum::<f64>() / students.len() as f64;
+    println!("Class average: {class_avg:.2}");
+
+    // Grade distribution
+    let mut dist: HashMap<char, usize> = HashMap::new();
+    students.iter().map(|s| s.letter_grade()).for_each(|g| *dist.entry(g).or_insert(0) += 1);
+    let mut dv: Vec<(char,usize)> = dist.into_iter().collect();
+    dv.sort_by_key(|&(g,_)| g);
+    println!("Distribution: {:?}", dv);
+
+    // By year
+    let mut by_year: HashMap<u32, Vec<f64>> = HashMap::new();
+    students.iter().for_each(|s| by_year.entry(s.year).or_insert_with(Vec::new).push(s.average()));
+    let mut year_avgs: Vec<(u32,f64)> = by_year.iter()
+        .map(|(&y, avgs)| (y, avgs.iter().sum::<f64>() / avgs.len() as f64))
+        .collect();
+    year_avgs.sort_by_key(|&(y,_)| y);
+    println!("By year: {:?}", year_avgs);
+}
+
+// Chapter 20 — Custom iterator and extension trait
+
+struct Chunks<'a, T> { data: &'a [T], chunk_size: usize, position: usize }
+impl<'a, T> Chunks<'a, T> {
+    fn new(data: &'a [T], chunk_size: usize) -> Self {
+        assert!(chunk_size > 0, "Chunk size must be positive");
+        Chunks { data, chunk_size, position: 0 }
+    }
+}
+impl<'a, T> Iterator for Chunks<'a, T> {
+    type Item = &'a [T];
+    fn next(&mut self) -> Option<&'a [T]> {
+        if self.position >= self.data.len() { return None; }
+        let end = (self.position + self.chunk_size).min(self.data.len());
+        let chunk = &self.data[self.position..end];
+        self.position = end;
+        Some(chunk)
+    }
+}
+
+struct RunningTotal<I: Iterator<Item = f64>> { inner: I, total: f64, index: usize }
+impl<I: Iterator<Item = f64>> RunningTotal<I> {
+    fn new(inner: I) -> Self { RunningTotal { inner, total: 0.0, index: 0 } }
+}
+impl<I: Iterator<Item = f64>> Iterator for RunningTotal<I> {
+    type Item = (usize, f64, f64);
+    fn next(&mut self) -> Option<Self::Item> {
+        let value = self.inner.next()?;
+        self.total += value;
+        let result = (self.index, value, self.total);
+        self.index += 1;
+        Some(result)
+    }
+}
+
+trait RunningTotalExt: Iterator<Item = f64> + Sized {
+    fn running_total(self) -> RunningTotal<Self> { RunningTotal::new(self) }
+}
+impl<I: Iterator<Item = f64>> RunningTotalExt for I {}
+
+fn main() {
+    let data = vec![1_i32,2,3,4,5,6,7,8,9,10];
+    println!("Chunks of 3:");
+    for chunk in Chunks::new(&data, 3) { println!("  {:?}", chunk); }
+
+    let sales = vec![150.0_f64, 220.0, 195.0, 310.0, 180.0];
+    println!("Daily sales with running total:");
+    for (day, sales, total) in sales.into_iter().running_total() {
+        println!("  Day {:2}: {:.0}  (total: {:.0})", day+1, sales, total);
+    }
+}
+
+// Chapter 20 — Exercise: Complete Data Processing Application
+
+use std::collections::HashMap;
+
+#[derive(Debug, Clone)]
+struct Product { name: String, category: String, price: f64, quantity: u32 }
+
+impl Product {
+    fn new(name: &str, category: &str, price: f64, quantity: u32) -> Product {
+        Product { name: String::from(name), category: String::from(category), price, quantity }
+    }
+    fn inventory_value(&self) -> f64 { self.price * self.quantity as f64 }
+}
+
+fn main() {
+    let products = vec![
+        Product::new("Laptop",    "Electronics", 999.99, 15),
+        Product::new("Phone",     "Electronics", 599.99,  8),
+        Product::new("Desk",      "Furniture",   349.99,  0),
+        Product::new("Chair",     "Furniture",   199.99, 12),
+        Product::new("Monitor",   "Electronics", 449.99,  5),
+        Product::new("Bookshelf", "Furniture",   249.99,  3),
+        Product::new("Keyboard",  "Electronics", 129.99,  0),
+        Product::new("Lamp",      "Furniture",    59.99, 20),
+    ];
+
+    // Out of stock
+    let out_of_stock: Vec<&str> = products.iter()
+        .filter(|p| p.quantity == 0)
+        .map(|p| p.name.as_str())
+        .collect();
+    println!("Out of stock: {:?}", out_of_stock);
+
+    // Total inventory value
+    let total_value: f64 = products.iter().map(|p| p.inventory_value()).sum();
+    println!("Total inventory value: {total_value:.2}");
+
+    // Top 3 most expensive per category
+    println!("Top expensive by category:");
+    let mut by_cat: HashMap<&str, Vec<&Product>> = HashMap::new();
+    for p in &products { by_cat.entry(p.category.as_str()).or_insert_with(Vec::new).push(p); }
+    for (cat, mut prods) in by_cat {
+        prods.sort_by(|a,b| b.price.partial_cmp(&a.price).unwrap());
+        let top: Vec<&str> = prods.iter().take(3).map(|p| p.name.as_str()).collect();
+        println!("  {cat}: {:?}", top);
+    }
+
+    // Category with highest average price
+    let mut cat_avg: HashMap<&str, (f64,usize)> = HashMap::new();
+    products.iter().for_each(|p| {
+        let e = cat_avg.entry(p.category.as_str()).or_insert((0.0, 0));
+        e.0 += p.price; e.1 += 1;
+    });
+    let best_cat = cat_avg.iter().max_by(|a,b| (a.1.0/a.1.1 as f64).partial_cmp(&(b.1.0/b.1.1 as f64)).unwrap());
+    if let Some((cat, (sum, count))) = best_cat {
+        println!("Highest avg price category: {} ({:.2})", cat, sum / *count as f64);
+    }
+
+    // Products by category, sorted
+    let mut grouped: HashMap<&str, Vec<&str>> = HashMap::new();
+    for p in &products { grouped.entry(p.category.as_str()).or_insert_with(Vec::new).push(p.name.as_str()); }
+    for (_, names) in grouped.iter_mut() { names.sort(); }
+    let mut sorted_groups: Vec<(&&str, &mut Vec<&str>)> = grouped.iter_mut().collect();
+    sorted_groups.sort_by_key(|&(cat, _)| *cat);
+    println!("Products by category:");
+    for (cat, names) in sorted_groups { println!("  {cat}: {:?}", names); }
+}
