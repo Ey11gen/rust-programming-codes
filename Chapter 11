@@ -1,0 +1,166 @@
+// Chapter 11 — Methods with impl
+
+use std::fmt;
+
+#[derive(Debug)]
+struct Rectangle { width: f64, height: f64 }
+
+impl Rectangle {
+    fn new(width: f64, height: f64) -> Rectangle {
+        assert!(width > 0.0 && height > 0.0, "Dimensions must be positive");
+        Rectangle { width, height }
+    }
+
+    fn square(side: f64) -> Rectangle { Rectangle::new(side, side) }
+
+    fn area(&self)      -> f64  { self.width * self.height }
+    fn perimeter(&self) -> f64  { 2.0 * (self.width + self.height) }
+    fn is_square(&self) -> bool { (self.width - self.height).abs() < f64::EPSILON }
+
+    fn can_hold(&self, other: &Rectangle) -> bool {
+        self.width > other.width && self.height > other.height
+    }
+
+    fn scale(&mut self, factor: f64) {
+        self.width  *= factor;
+        self.height *= factor;
+    }
+}
+
+impl fmt::Display for Rectangle {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Rectangle({:.2} x {:.2})", self.width, self.height)
+    }
+}
+
+fn main() {
+    let big    = Rectangle::new(20.0, 15.0);
+    let small  = Rectangle::new(8.0, 6.0);
+    let square = Rectangle::square(5.0);
+
+    println!("{big}");
+    println!("Area:      {:.2}", big.area());
+    println!("Perimeter: {:.2}", big.perimeter());
+    println!("Is square: {}",    square.is_square());
+    println!("big holds small: {}", big.can_hold(&small));
+
+    let mut r = Rectangle::new(10.0, 4.0);
+    r.scale(2.0);
+    println!("After scale: {r}");
+}
+
+// Chapter 11 — Builder pattern with self-consuming methods
+
+#[derive(Debug)]
+struct QueryBuilder {
+    table:      String,
+    conditions: Vec<String>,
+    limit:      Option<usize>,
+}
+
+impl QueryBuilder {
+    fn new(table: &str) -> Self {
+        QueryBuilder { table: String::from(table), conditions: Vec::new(), limit: None }
+    }
+
+    fn filter(mut self, condition: &str) -> Self {
+        self.conditions.push(String::from(condition));
+        self
+    }
+
+    fn limit(mut self, n: usize) -> Self {
+        self.limit = Some(n);
+        self
+    }
+
+    fn build(self) -> String {
+        let mut query = format!("SELECT * FROM {}", self.table);
+        if !self.conditions.is_empty() {
+            query.push_str(" WHERE ");
+            query.push_str(&self.conditions.join(" AND "));
+        }
+        if let Some(n) = self.limit {
+            query.push_str(&format!(" LIMIT {}", n));
+        }
+        query
+    }
+}
+
+fn main() {
+    let query = QueryBuilder::new("users")
+        .filter("age > 18")
+        .filter("is_active = true")
+        .limit(100)
+        .build();
+    println!("{query}");
+}
+
+// Chapter 11 — BankAccount with mutable methods
+
+#[derive(Debug)]
+struct BankAccount { owner: String, balance: f64 }
+
+impl BankAccount {
+    fn new(owner: &str, initial: f64) -> Self {
+        BankAccount { owner: String::from(owner), balance: initial }
+    }
+    fn balance(&self) -> f64 { self.balance }
+    fn statement(&self) { println!("{}: EUR {:.2}", self.owner, self.balance); }
+    fn deposit(&mut self, amount: f64) -> Result<(), String> {
+        if amount <= 0.0 { return Err(String::from("Amount must be positive")); }
+        self.balance += amount;
+        println!("Deposited EUR {:.2}. Balance: EUR {:.2}", amount, self.balance);
+        Ok(())
+    }
+    fn withdraw(&mut self, amount: f64) -> bool {
+        if amount <= 0.0 || amount > self.balance {
+            println!("Withdrawal of EUR {:.2} denied.", amount);
+            return false;
+        }
+        self.balance -= amount;
+        println!("Withdrew EUR {:.2}. Balance: EUR {:.2}", amount, self.balance);
+        true
+    }
+}
+
+fn main() {
+    let mut account = BankAccount::new("Ayoub", 500.0);
+    account.statement();
+    account.deposit(250.0).expect("Deposit failed");
+    account.withdraw(100.0);
+    account.withdraw(800.0);
+    account.statement();
+}
+
+// Chapter 11 — Exercise: Stack<i32> Data Structure
+
+use std::fmt;
+
+struct Stack { elements: Vec<i32> }
+
+impl Stack {
+    fn new() -> Stack { Stack { elements: Vec::new() } }
+    fn push(&mut self, item: i32)     { self.elements.push(item); }
+    fn pop(&mut self)  -> Option<i32> { self.elements.pop() }
+    fn peek(&self)     -> Option<&i32>{ self.elements.last() }
+    fn is_empty(&self) -> bool         { self.elements.is_empty() }
+    fn size(&self)     -> usize        { self.elements.len() }
+}
+
+impl fmt::Display for Stack {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let items: Vec<String> = self.elements.iter().map(|x| x.to_string()).collect();
+        write!(f, "[{}] (top)", items.join(", "))
+    }
+}
+
+fn main() {
+    let mut stack = Stack::new();
+    for v in [5, 10, 15, 20, 25] { stack.push(v); }
+    println!("{stack}");
+    println!("Peek: {:?}", stack.peek());
+    println!("Size: {}", stack.size());
+    while let Some(val) = stack.pop() { print!("{val} "); }
+    println!();
+    println!("Empty: {}", stack.is_empty());
+}
