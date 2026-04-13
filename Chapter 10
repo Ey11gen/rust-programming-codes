@@ -1,0 +1,189 @@
+// Chapter 10 — Defining structs and creating instances
+
+use std::fmt;
+
+#[derive(Debug)]
+struct UserAccount {
+    username:    String,
+    email:       String,
+    age:         u32,
+    is_active:   bool,
+    login_count: u32,
+}
+
+fn create_guest_account(email: &str) -> UserAccount {
+    UserAccount {
+        username:    String::from("guest"),
+        email:       String::from(email),
+        age:         0,
+        is_active:   true,
+        login_count: 0,
+    }
+}
+
+fn build_account(username: String, email: String, age: u32) -> UserAccount {
+    UserAccount { username, email, age, is_active: true, login_count: 0 }
+}
+
+fn main() {
+    let user1 = UserAccount {
+        username:    String::from("ayoub_g"),
+        email:       String::from("ayoub@example.com"),
+        age:         22,
+        is_active:   true,
+        login_count: 0,
+    };
+    println!("User:   {}", user1.username);
+    println!("Email:  {}", user1.email);
+    println!("{:?}", user1);
+
+    // Struct update syntax
+    let updated = UserAccount {
+        username: String::from("updated_user"),
+        email:    String::from("updated@example.com"),
+        ..user1
+    };
+    println!("Updated age (from original): {}", updated.age);
+
+    let guest = create_guest_account("guest@example.com");
+    println!("Guest: {} <{}>", guest.username, guest.email);
+}
+
+// Chapter 10 — Tuple structs and unit-like structs
+
+use std::fmt;
+use std::ops::Add;
+
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+struct Meters(f64);
+
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+struct Kilograms(f64);
+
+#[derive(Debug, Clone, Copy)]
+struct Color(u8, u8, u8);
+
+impl Add for Meters {
+    type Output = Meters;
+    fn add(self, rhs: Meters) -> Meters { Meters(self.0 + rhs.0) }
+}
+
+impl fmt::Display for Meters    { fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "{:.2} m",  self.0) } }
+impl fmt::Display for Kilograms { fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "{:.2} kg", self.0) } }
+
+fn print_distance(d: Meters) { println!("Distance: {d}"); }
+
+// Unit-like struct
+struct DatabaseMarker;
+struct NetworkMarker;
+
+trait Describable { fn describe(&self) -> &'static str; }
+impl Describable for DatabaseMarker { fn describe(&self) -> &'static str { "DB operation" } }
+impl Describable for NetworkMarker  { fn describe(&self) -> &'static str { "Network operation" } }
+
+fn main() {
+    let d1 = Meters(100.0);
+    let d2 = Meters(50.0);
+    println!("Total: {}", d1 + d2);
+
+    let mass = Kilograms(70.0);
+    println!("Mass: {mass}");
+    // print_distance(mass);  // ERROR: expected Meters, found Kilograms
+
+    let orange = Color(255, 165, 0);
+    let Color(r, g, b) = orange;
+    println!("RGB: {r}, {g}, {b}");
+
+    let db  = DatabaseMarker;
+    let net = NetworkMarker;
+    println!("{}", db.describe());
+    println!("{}", net.describe());
+}
+
+// Chapter 10 — Printing structs: Debug and Display
+
+use std::fmt;
+
+#[derive(Debug, Clone)]
+struct Rectangle { width: f64, height: f64, label: String }
+
+impl fmt::Display for Rectangle {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Rectangle '{}': {:.2} x {:.2}", self.label, self.width, self.height)
+    }
+}
+
+#[derive(Debug)]
+struct Point { x: f64, y: f64 }
+
+impl fmt::Display for Point {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({:.2}, {:.2})", self.x, self.y)
+    }
+}
+
+fn main() {
+    let rect = Rectangle {
+        width:  10.5,
+        height: 4.2,
+        label:  String::from("Room A"),
+    };
+    println!("{:?}",  rect);   // Debug
+    println!("{:#?}", rect);   // Pretty Debug
+    println!("{rect}");        // Display
+    dbg!(&rect);               // Debug to stderr with location
+
+    let area = rect.width * rect.height;
+    let area = dbg!(area);
+    println!("Area: {area}");
+
+    let p = Point { x: 3.14159, y: 2.71828 };
+    println!("Debug:   {:?}", p);
+    println!("Display: {p}");
+    println!("String:  {}", p.to_string());
+}
+
+// Chapter 10 — Exercise: TemperatureReading Struct
+
+use std::fmt;
+
+#[derive(Debug, Clone)]
+struct TemperatureReading {
+    location:  String,
+    celsius:   f64,
+    timestamp: u64,
+}
+
+impl TemperatureReading {
+    fn new(location: &str, celsius: f64, timestamp: u64) -> Self {
+        TemperatureReading {
+            location: String::from(location),
+            celsius,
+            timestamp,
+        }
+    }
+}
+
+impl fmt::Display for TemperatureReading {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}: {:.1}C (at {})", self.location, self.celsius, self.timestamp)
+    }
+}
+
+fn main() {
+    let r1 = TemperatureReading::new("Santander", 18.5, 1700000000);
+    let r2 = TemperatureReading::new("Elche",     24.3, 1700000060);
+    let r3 = TemperatureReading::new("Madrid",    22.1, 1700000120);
+
+    for r in &[&r1, &r2, &r3] {
+        println!("{r}");
+        println!("{:?}", r);
+    }
+
+    // Struct update syntax
+    let r4 = TemperatureReading {
+        location: String::from("Barcelona"),
+        ..r1.clone()
+    };
+    println!("r4: {r4}");
+}
